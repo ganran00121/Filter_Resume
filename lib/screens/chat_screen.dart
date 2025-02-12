@@ -18,7 +18,8 @@ class ChatScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("CHAT"),
+        centerTitle:  true,
+        title: Text("Recent Chat"),
         backgroundColor: Colors.white,
       ),
       backgroundColor: Colors.white,
@@ -44,7 +45,16 @@ class ChatScreen extends StatelessWidget {
                   );
                 },
               ),
-              Divider(height: 1), // Add divider
+              Padding( // Add padding around the divider
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Divider(height: 1,color: Color(0xFFE0E0E0)),
+                    ),
+                  ],
+                ),
+              ),
             ],
           );
         },
