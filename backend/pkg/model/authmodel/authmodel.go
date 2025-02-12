@@ -7,3 +7,12 @@ type User struct {
 	PhotoURL    string `json:"photoURL"`
 	ProviderID  string `json:"providerID"`
 }
+
+type LoginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type FirebaseResponse struct {
+	IDToken string `json:"idToken"`
+}
