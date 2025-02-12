@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'screens/home_screen.dart';
-import 'screens/explore_screen.dart';
+// import 'screens/explore_screen.dart';
 import 'screens/chat_screen.dart';
 import 'screens/company_screen.dart';
 import 'screens/profile_screen.dart';
@@ -30,7 +30,7 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _pages = [
     HomeScreen(),
-    ExploreScreen(),
+    // ExploreScreen(),
     ChatScreen(),
     CompanyScreen(),
     ProfileScreen(),
@@ -76,13 +76,13 @@ class _MainScreenState extends State<MainScreen> {
                 ),
                 label: 'Home',
               ),
-              BottomNavigationBarItem(
-                icon: Padding(
-                  padding: EdgeInsets.only(top: 8),
-                  child: Icon(Icons.explore, size: 32),
-                ),
-                label: 'Explore',
-              ),
+              // BottomNavigationBarItem(
+              //   icon: Padding(
+              //     padding: EdgeInsets.only(top: 8),
+              //     child: Icon(Icons.explore, size: 32),
+              //   ),
+              //   label: 'Explore',
+              // ),
               BottomNavigationBarItem(
                 icon: Padding(
                   padding: EdgeInsets.only(top: 8),
