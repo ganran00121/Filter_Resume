@@ -1,19 +1,20 @@
 package authservice
 
 import (
+	"backend/pkg/model/authmodel"
+	"backend/pkg/repository/authrepo"
 	"errors"
 )
 
 type AuthService struct {
-	repo *repository.FirebaseRepository
+	repo *authrepo.FirebaseRepository
 }
 
-func NewAuthService(repo *repository.FirebaseRepository) *AuthService {
+func NewAuthService(repo *authrepo.FirebaseRepository) *AuthService {
 	return &AuthService{repo: repo}
 }
 
-// Authenticate ตรวจสอบและยืนยันผู้ใช้จาก Firebase
-func (s *AuthService) Authenticate(idToken string) (*model.User, error) {
+func (s *AuthService) Authenticate(idToken string) (*authmodel.User, error) {
 	// Check ID Token
 	token, err := s.repo.VerifyIDToken(idToken)
 	if err != nil {
@@ -27,7 +28,7 @@ func (s *AuthService) Authenticate(idToken string) (*model.User, error) {
 	}
 
 	// Create User model
-	user := &model.User{
+	user := &authmodel.User{
 		UID:         userRecord.UID,
 		Email:       userRecord.Email,
 		DisplayName: userRecord.DisplayName,

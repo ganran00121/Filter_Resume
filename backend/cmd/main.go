@@ -1,14 +1,16 @@
 package main
 
 import (
+	"backend/handler/authhandler"
+	"backend/pkg/repository/authrepo"
+	"backend/pkg/service/authservice"
+	"backend/routes"
 	"fmt"
 	"log"
 	"os"
-	"../pkg/repository/authrepo"
-	"../pkg/service/authservice"
-	"../handler/authhandler"
+
 	firebase "firebase.google.com/go"
-	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
 )
 
@@ -24,21 +26,21 @@ func main() {
 
 	credentialsFile := "flitter-resume-firebase-adminsdk-fbsvc-80dab766cc.json"
 
-	firebaseRepo, err := repository.NewFirebaseRepository(credentialsFile)
+	firebaseRepo, err := authrepo.NewFirebaseRepository(credentialsFile)
 	if err != nil {
 		log.Fatalf("Error initializing Firebase Repository: %v", err)
 	}
 
-	authService := service.NewAuthService(firebaseRepo)
+	authService := authservice.NewAuthService(firebaseRepo)
 
 	// สร้าง AuthHandler
-	authHandler := handler.NewAuthHandler(authService)
+	authHandler := authhandler.NewAuthHandler(authService)
 
-	// Route สำหรับ login
-	app.Get("/login", authHandler.LoginHandler)
-	app.Get("/health", func(c fiber.Ctx) error {
+	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusOK)
 	})
+
+	routes.RegisterAuthRoutes(app, *authHandler)
 
 	log.Printf("Server is running on port %s", os.Getenv("PORT"))
 	if err := app.Listen(fmt.Sprintf(":%s", os.Getenv("PORT"))); err != nil {
