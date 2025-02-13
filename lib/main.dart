@@ -1,3 +1,4 @@
+import 'screens/signin_screen.dart';
 import 'package:flutter/material.dart';
 import 'screens/home_screen.dart';
 // import 'screens/explore_screen.dart';
@@ -34,6 +35,7 @@ class _MainScreenState extends State<MainScreen> {
     ChatScreen(),
     CompanyScreen(),
     ProfileScreen(),
+    SigninScreen(),
   ];
 
   void _onItemTapped(int index) {
@@ -103,6 +105,13 @@ class _MainScreenState extends State<MainScreen> {
                   child: Icon(Icons.person, size: 32),
                 ),
                 label: 'Profile',
+              ),
+              BottomNavigationBarItem(
+                icon: Padding(
+                  padding: EdgeInsets.only(top: 8),
+                  child: Icon(Icons.login, size: 32),
+                ),
+                label: 'Login',
               ),
             ],
             currentIndex: _selectedIndex,

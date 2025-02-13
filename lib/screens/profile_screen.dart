@@ -42,7 +42,7 @@ class ProfileScreen extends StatelessWidget {
                       height: 120,
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(100),
-                        child: Image.network('https://picsum.photos/250?image=9'),
+                        child: Image.asset('assets/images/user_profile.png'),
                       ),
                     ),
                     // Positioned(
@@ -72,7 +72,7 @@ class ProfileScreen extends StatelessWidget {
                         buildTextFormField('Gender', profile.gender),
                       ],
                     )),
-                    const SizedBox(height: 50,),
+                    const SizedBox(height: 30,),
                     SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
