@@ -10,6 +10,25 @@ enum SelectedType { personal, company }
 
 class _SignupScreenState extends State<SignupScreen> {
   SelectedType _character = SelectedType.personal;
+  final TextEditingController _firstname = TextEditingController();
+  final TextEditingController _lastname = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _phoneNumber = TextEditingController();
+  final TextEditingController _companyName = TextEditingController();
+  final TextEditingController _companyPhoneNumber = TextEditingController();
+
+  var _isObscured;
+  var _isConfirmObscured;
+
+  @override
+  void initState() {
+    super.initState();
+    _isObscured = true;
+    _isConfirmObscured = true;
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -41,22 +60,44 @@ class _SignupScreenState extends State<SignupScreen> {
               Form(
                 child: Column(
                   children: [
-                    buildTextFormField('Email'),
-                    buildPasswordField('Password'),
-                    buildPasswordField('Confirm password'),
-
+                    buildTextFormField('Email', _emailController),
+                    buildPasswordField('Password', _passwordController),
+                    TextFormField(
+                      controller: _confirmPasswordController,
+                      obscureText: _isConfirmObscured,
+                      style: TextStyle(color: Colors.black),
+                      decoration: InputDecoration(
+                        suffixIcon: IconButton(
+                          onPressed: () {
+                            setState(() {
+                              _isConfirmObscured =!_isConfirmObscured;
+                            });
+                          },
+                          icon: _isConfirmObscured ? const Icon(Icons.visibility) : const Icon(Icons.visibility_off) ,
+                          padding: const EdgeInsetsDirectional.only(end: 12),
+                        ),
+                        fillColor: Colors.white,
+                        filled: true,
+                        labelText: 'Confirm password',
+                        border: OutlineInputBorder(),
+                        prefixIconColor: Colors.grey,
+                        floatingLabelStyle: const TextStyle(color: Colors.black),
+                        focusedBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(width: 2, color: Colors.grey),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
                     // Radio Buttons for Personal and Company Selection
-
-
                     // Conditional Forms
                     if (_character == SelectedType.personal) ...[
-                      buildTextFormField('Firstname'),
-                      buildTextFormField('Lastname'),
-                      buildTextFormField('Phone number'),
+                      buildTextFormField('Firstname', _firstname),
+                      buildTextFormField('Lastname', _lastname),
+                      buildTextFormField('Phone number', _phoneNumber),
                     ] else ...[
-                      buildTextFormField('Company Name'),
+                      buildTextFormField('Company Name', _companyName),
                       // buildTextFormField('Company Registration Number'),
-                      buildTextFormField('Company Phone Number'),
+                      buildTextFormField('Company Phone Number', _companyPhoneNumber),
                     ],  
 
                     Row(
@@ -134,10 +175,11 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
-  Widget buildTextFormField(String label) {
+  Widget buildTextFormField(String label, TextEditingController controller) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: TextFormField(
+        controller: controller,
         style: TextStyle(color: Colors.black),
         decoration: InputDecoration(
           fillColor: Colors.white,
@@ -154,13 +196,23 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
-  Widget buildPasswordField(String label) {
+  Widget buildPasswordField(String label, TextEditingController controller) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: TextFormField(
-        obscureText: true,
+        controller: controller,
+        obscureText: _isObscured,
         style: TextStyle(color: Colors.black),
         decoration: InputDecoration(
+          suffixIcon: IconButton(
+            onPressed: () {
+              setState(() {
+                _isObscured =!_isObscured;
+              });
+            },
+            icon: _isObscured ? const Icon(Icons.visibility) : const Icon(Icons.visibility_off) ,
+            padding: const EdgeInsetsDirectional.only(end: 12),
+          ),
           fillColor: Colors.white,
           filled: true,
           labelText: label,
@@ -174,4 +226,6 @@ class _SignupScreenState extends State<SignupScreen> {
       ),
     );
   }
+
+
 }
