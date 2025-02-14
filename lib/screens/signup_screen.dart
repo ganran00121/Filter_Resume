@@ -154,7 +154,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text("Don't have an account? "),
+                    const Text("Already have an account? "),
                     InkWell(
                       onTap: () {
                         Navigator.push(
