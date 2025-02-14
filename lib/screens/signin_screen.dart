@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'signup_screen.dart';
 import 'home_screen.dart';
+import 'dart:convert';
 
 class SigninScreen extends StatefulWidget {
   @override
@@ -13,10 +15,27 @@ class _SigninScreenState extends State<SigninScreen> {
 
   var _isObscured;
 
+  Future<Map<String, String>> _readMockData() async {
+    try {
+      final contents = await rootBundle.loadString('assets/variables.json');
+      final jsonData = jsonDecode(contents); // Use jsonDecode to parse the JSON data
+      return jsonData.cast<String, String>();
+    } catch (e) {
+      print('Error reading mock data: $e');
+      return {};
+    }
+  }
+
   @override
-  void initState(){
+  void initState() {
     super.initState();
     _isObscured = true;
+
+    // Set the mock data to the text fields
+    _readMockData().then((mockData) {
+      _emailController.text = mockData['email']?? '';
+      _passwordController.text = mockData['password']?? '';
+    });
   }
 
   @override
@@ -30,9 +49,48 @@ class _SigninScreenState extends State<SigninScreen> {
     String email = _emailController.text.trim();
     String password = _passwordController.text.trim();
 
-    print('Email: $email');
-    print('Password: $password');
-    // Add API call or authentication logic here
+    _readMockData().then((mockData) {
+      if (email == mockData['email'] && password == mockData['password']) {
+        // Show "Login Successfully" popup
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              title: Center(child: Icon(Icons.check_circle, color: Colors.green, size: 48.0)),
+              content: Text('Login Successful!\nWelcome back!', textAlign: TextAlign.center),
+            );
+          },
+        );
+
+        // Wait for 2 seconds and then close the popups and screen
+        Future.delayed(Duration(seconds: 2), () {
+          Navigator.pop(context); // Close the "Login Successfully" popup
+          Navigator.pop(context); // Close the SigninScreen
+        });
+      } else {
+        // Show an error message or handle incorrect credentials
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text('Login Failed'),
+              content: Text(
+                'Incorrect email or password.',
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: Text('Close'),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      }
+    });
   }
 
   @override
