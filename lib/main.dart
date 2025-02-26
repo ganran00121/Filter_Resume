@@ -1,3 +1,4 @@
+import 'screens/signin_screen.dart';
 import 'package:flutter/material.dart';
 import 'screens/home_screen.dart';
 // import 'screens/explore_screen.dart';
@@ -14,7 +15,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(primaryColor: Colors.orange),
+      theme: ThemeData(primaryColor: Colors.orange, canvasColor: Colors.white),
       home: MainScreen(),
     );
   }
@@ -32,13 +33,29 @@ class _MainScreenState extends State<MainScreen> {
     HomeScreen(),
     // ExploreScreen(),
     ChatScreen(),
-    CompanyScreen(),
+    // CompanyScreen(),
     ProfileScreen(),
+    // SigninScreen(),
   ];
 
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Show the login popup when the app starts
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true, // Allow the sheet to be full screen
+        builder: (BuildContext context) {
+          return SigninPopup();
+        },
+      );
     });
   }
 
@@ -90,13 +107,13 @@ class _MainScreenState extends State<MainScreen> {
                 ),
                 label: 'Chat',
               ),
-              BottomNavigationBarItem(
-                icon: Padding(
-                  padding: EdgeInsets.only(top: 8),
-                  child: Icon(Icons.business, size: 32),
-                ),
-                label: 'Company',
-              ),
+              // BottomNavigationBarItem(
+              //   icon: Padding(
+              //     padding: EdgeInsets.only(top: 8),
+              //     child: Icon(Icons.business, size: 32),
+              //   ),
+              //   label: 'Company',
+              // ),
               BottomNavigationBarItem(
                 icon: Padding(
                   padding: EdgeInsets.only(top: 8),
@@ -104,6 +121,13 @@ class _MainScreenState extends State<MainScreen> {
                 ),
                 label: 'Profile',
               ),
+              // BottomNavigationBarItem(
+              //   icon: Padding(
+              //     padding: EdgeInsets.only(top: 8),
+              //     child: Icon(Icons.login, size: 32),
+              //   ),
+              //   label: 'Login',
+              // ),
             ],
             currentIndex: _selectedIndex,
             selectedItemColor: Colors.orange,
@@ -115,6 +139,17 @@ class _MainScreenState extends State<MainScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+// SigninPopup Widget
+class SigninPopup extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: MediaQuery.of(context).size.height, // Set the height to full screen
+      child: SigninScreen(), // Use your existing SigninScreen here
     );
   }
 }
