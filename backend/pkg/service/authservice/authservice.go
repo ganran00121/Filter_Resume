@@ -2,39 +2,40 @@ package authservice
 
 import (
 	"backend/pkg/model/authmodel"
-	"backend/pkg/repository/authrepo"
 	"errors"
+
+	"gorm.io/gorm"
 )
 
+type IAuthService interface {
+	Register(registerRequest *authmodel.RegisterRequest) error
+}
 type AuthService struct {
-	repo *authrepo.FirebaseRepository
+	DB *gorm.DB
 }
 
-func NewAuthService(repo *authrepo.FirebaseRepository) *AuthService {
-	return &AuthService{repo: repo}
+func NewAuthService(db *gorm.DB) *AuthService {
+	return &AuthService{DB: db}
 }
 
-func (s *AuthService) Authenticate(idToken string) (*authmodel.User, error) {
-	// Check ID Token
-	token, err := s.repo.VerifyIDToken(idToken)
-	if err != nil {
-		return nil, errors.New("invalid token")
+func (s *AuthService) Register(registerRequest *authmodel.RegisterRequest) error {
+
+	var User authmodel.RegisterRequest
+	if err := s.DB.Where("email = ?", registerRequest.Email).First(&User).Error; err == nil {
+		return errors.New("user already exists")
 	}
 
-	// Get UID
-	userRecord, err := s.repo.GetUser(token.UID)
-	if err != nil {
-		return nil, err
+	newUser := authmodel.User{
+		Email:    registerRequest.Email,
+		Name:     registerRequest.Name,
+		Password: registerRequest.Password,
+		Phone:    registerRequest.Phone,
+		UserType: registerRequest.UserType,
 	}
 
-	// Create User model
-	user := &authmodel.User{
-		UID:         userRecord.UID,
-		Email:       userRecord.Email,
-		DisplayName: userRecord.DisplayName,
-		PhotoURL:    userRecord.PhotoURL,
-		ProviderID:  userRecord.ProviderID,
+	if err := s.DB.Create(&newUser).Error; err != nil {
+		return err
 	}
 
-	return user, nil
+	return nil
 }
