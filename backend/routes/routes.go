@@ -8,6 +8,6 @@ import (
 
 func RegisterAuthRoutes(app *fiber.App, authHandler *authhandler.AuthHandler) {
 	authGroup := app.Group("/auth")
-
 	authGroup.Post("/register", authHandler.Register)
+	authGroup.Post("/login", authHandler.Login)
 }

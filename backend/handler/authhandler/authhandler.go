@@ -9,6 +9,7 @@ import (
 
 type IAuthHandler interface {
 	Register(c *fiber.Ctx) error
+	Login(c *fiber.Ctx) error
 }
 type AuthHandler struct {
 	AuthService *authservice.AuthService
@@ -35,5 +36,30 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"message": "User registered successfully",
+	})
+}
+
+func (h *AuthHandler) Login(c *fiber.Ctx) error {
+	var loginRequest authmodel.LoginRequest
+
+	// Binding JSON request ไปที่ loginRequest
+	if err := c.BodyParser(&loginRequest); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	// เรียกใช้ service ในการเข้าสู่ระบบ
+	token, err := h.AuthService.Login(&loginRequest)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	// ถ้าการเข้าสู่ระบบสำเร็จ
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message": "User logged in successfully",
+		"token":   token,
 	})
 }
