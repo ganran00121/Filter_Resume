@@ -3,6 +3,8 @@ package jobhandler
 import (
 	"backend/pkg/model/jobmodel"
 	"backend/pkg/service/jobservice"
+	"bytes"
+	"io"
 	"net/http"
 	"strconv"
 
@@ -16,9 +18,9 @@ type IJobHandler interface {
 	UpdateJobPost(c *fiber.Ctx) error
 	DeleteJobPost(c *fiber.Ctx) error
 	ListJobPosts(c *fiber.Ctx) error
-	ListJobPostsByCompany(c *fiber.Ctx) error // Keep, but now filters by UserID
-	ListOpenJobPosts(c *fiber.Ctx) error      // Added: List only open jobs
-	ListClosedJobPosts(c *fiber.Ctx) error    // Added: List only closed jobs
+	ListJobPostsByCompany(c *fiber.Ctx) error
+	ListOpenJobPosts(c *fiber.Ctx) error
+	ListClosedJobPosts(c *fiber.Ctx) error
 	CreateJobApplication(c *fiber.Ctx) error
 	GetJobApplication(c *fiber.Ctx) error
 	UpdateJobApplication(c *fiber.Ctx) error
@@ -41,16 +43,12 @@ func NewJobHandler(jobService jobservice.IJobService) *JobHandler {
 
 // Job Post Handlers
 
+// CreateJobPost handles POST /api/jobs
 func (h *JobHandler) CreateJobPost(c *fiber.Ctx) error {
 	var jobPost jobmodel.JobPost
 	if err := c.BodyParser(&jobPost); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
 	}
-
-	//  jobPost.Status is now a boolean.  It defaults to true (open)
-	//  if not provided in the request body.  You *could* add validation
-	//  here to explicitly check if the user is allowed to set a specific status,
-	//  but by default, new job posts will be open.
 
 	if err := h.JobService.CreateJobPost(&jobPost); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create job post"})
@@ -59,6 +57,7 @@ func (h *JobHandler) CreateJobPost(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(jobPost)
 }
 
+// GetJobPost handles GET /api/jobs/:id
 func (h *JobHandler) GetJobPost(c *fiber.Ctx) error {
 	id, err := strconv.ParseUint(c.Params("id"), 10, 64)
 	if err != nil {
@@ -76,6 +75,7 @@ func (h *JobHandler) GetJobPost(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(jobPost)
 }
 
+// UpdateJobPost handles PUT /api/jobs/:id
 func (h *JobHandler) UpdateJobPost(c *fiber.Ctx) error {
 	id, err := strconv.ParseUint(c.Params("id"), 10, 64)
 	if err != nil {
@@ -87,7 +87,6 @@ func (h *JobHandler) UpdateJobPost(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
 	}
 
-	// Set the ID from the path parameter, ensuring consistency
 	jobPost.ID = uint(id)
 
 	if err := h.JobService.UpdateJobPost(&jobPost); err != nil {
@@ -100,6 +99,7 @@ func (h *JobHandler) UpdateJobPost(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(jobPost)
 }
 
+// DeleteJobPost handles DELETE /api/jobs/:id
 func (h *JobHandler) DeleteJobPost(c *fiber.Ctx) error {
 	id, err := strconv.ParseUint(c.Params("id"), 10, 64)
 	if err != nil {
@@ -116,6 +116,7 @@ func (h *JobHandler) DeleteJobPost(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusNoContent).Send(nil)
 }
 
+// ListJobPosts handles GET /api/jobs
 func (h *JobHandler) ListJobPosts(c *fiber.Ctx) error {
 	jobPosts, err := h.JobService.ListJobPosts()
 	if err != nil {
@@ -124,21 +125,21 @@ func (h *JobHandler) ListJobPosts(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(jobPosts)
 }
 
-// ListJobPostsByCompany now filters by UserID
+// ListJobPostsByCompany handles GET /api/jobs/company/:companyId
 func (h *JobHandler) ListJobPostsByCompany(c *fiber.Ctx) error {
-	userID, err := strconv.ParseUint(c.Params("companyId"), 10, 64) // Keep parameter name, but it's UserID
+	userID, err := strconv.ParseUint(c.Params("companyId"), 10, 64)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid user ID"}) // Corrected error message
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid user ID"})
 	}
 
-	jobPosts, err := h.JobService.ListJobPostsByCompanyID(uint(userID)) // Now passes UserID
+	jobPosts, err := h.JobService.ListJobPostsByCompanyID(uint(userID))
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to retrieve job posts"})
 	}
 	return c.Status(fiber.StatusOK).JSON(jobPosts)
 }
 
-// Added: List only open jobs
+// ListOpenJobPosts handles GET /api/jobs/open
 func (h *JobHandler) ListOpenJobPosts(c *fiber.Ctx) error {
 	jobPosts, err := h.JobService.ListOpenJobPosts()
 	if err != nil {
@@ -147,7 +148,7 @@ func (h *JobHandler) ListOpenJobPosts(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(jobPosts)
 }
 
-// Added: List only closed jobs
+// ListClosedJobPosts handles GET /api/jobs/closed
 func (h *JobHandler) ListClosedJobPosts(c *fiber.Ctx) error {
 	jobPosts, err := h.JobService.ListClosedJobPosts()
 	if err != nil {
@@ -158,23 +159,53 @@ func (h *JobHandler) ListClosedJobPosts(c *fiber.Ctx) error {
 
 // Job Application Handlers
 
+// CreateJobApplication handles POST /api/jobs/:jobId/apply
 func (h *JobHandler) CreateJobApplication(c *fiber.Ctx) error {
+	jobID, err := strconv.ParseUint(c.Params("jobId"), 10, 64)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid job ID"})
+	}
+
 	var application jobmodel.JobApplication
 	if err := c.BodyParser(&application); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
 	}
 
-	//  application.Status defaults to "pending" due to the model definition.
-	//  You *could* add validation here to make sure the user isn't trying to
-	//  set a status they shouldn't (e.g., an applicant setting "accepted").
-
-	if err := h.JobService.CreateJobApplication(&application); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create job application"})
+	// Get the file from the request.
+	file, err := c.FormFile("resume") // "resume" is the name of the form field
+	if err != nil {
+		if err == http.ErrMissingFile {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Resume file is required"})
+		}
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Error retrieving file: " + err.Error()})
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(application)
+	// Open the file.
+	src, err := file.Open()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error opening file: " + err.Error()})
+	}
+	defer src.Close()
+
+	// Read the file content into a byte slice.
+	buf := bytes.NewBuffer(nil)
+	if _, err := io.Copy(buf, src); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error reading file: " + err.Error()})
+	}
+	fileBytes := buf.Bytes()
+
+	// Set the JobID from the URL parameter.  VERY IMPORTANT.
+	application.JobID = uint(jobID)
+
+	filePath, err := h.JobService.CreateJobApplication(&application, fileBytes)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create job application: " + err.Error()})
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "Application submitted successfully", "file_path": filePath})
 }
 
+// GetJobApplication handles GET /api/jobs/applications/:id
 func (h *JobHandler) GetJobApplication(c *fiber.Ctx) error {
 	id, err := strconv.ParseUint(c.Params("id"), 10, 64)
 	if err != nil {
@@ -192,6 +223,7 @@ func (h *JobHandler) GetJobApplication(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(application)
 }
 
+// UpdateJobApplication handles PUT /api/jobs/applications/:id
 func (h *JobHandler) UpdateJobApplication(c *fiber.Ctx) error {
 	id, err := strconv.ParseUint(c.Params("id"), 10, 64)
 	if err != nil {
@@ -205,11 +237,6 @@ func (h *JobHandler) UpdateJobApplication(c *fiber.Ctx) error {
 
 	application.ID = uint(id)
 
-	//  Here's where you might add authorization checks.  For example, you
-	//  might only allow an admin or the company that posted the job to
-	//  update the application status.  A regular applicant should *not* be
-	//  able to update the status directly.
-
 	if err := h.JobService.UpdateJobApplication(&application); err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Job application not found"})
@@ -220,6 +247,7 @@ func (h *JobHandler) UpdateJobApplication(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(application)
 }
 
+// ListJobApplicationsForJob handles GET /api/jobs/:jobId/applications
 func (h *JobHandler) ListJobApplicationsForJob(c *fiber.Ctx) error {
 	jobID, err := strconv.ParseUint(c.Params("jobId"), 10, 64)
 	if err != nil {
@@ -233,6 +261,7 @@ func (h *JobHandler) ListJobApplicationsForJob(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(applications)
 }
 
+// ListJobApplicationsForUser handles GET /api/jobs/user/:userId/applications
 func (h *JobHandler) ListJobApplicationsForUser(c *fiber.Ctx) error {
 	userID, err := strconv.ParseUint(c.Params("userId"), 10, 64)
 	if err != nil {
@@ -246,6 +275,8 @@ func (h *JobHandler) ListJobApplicationsForUser(c *fiber.Ctx) error {
 }
 
 // Saved Job Handlers
+
+// SaveJob handles POST /api/jobs/user/:userId/save/:jobId
 func (h *JobHandler) SaveJob(c *fiber.Ctx) error {
 	userID, err := strconv.ParseUint(c.Params("userId"), 10, 64)
 	if err != nil {
@@ -263,6 +294,7 @@ func (h *JobHandler) SaveJob(c *fiber.Ctx) error {
 	return c.Status(http.StatusCreated).JSON(fiber.Map{"message": "Job saved successfully"})
 }
 
+// UnsaveJob handles DELETE /api/jobs/user/:userId/unsave/:jobId
 func (h *JobHandler) UnsaveJob(c *fiber.Ctx) error {
 	userID, err := strconv.ParseUint(c.Params("userId"), 10, 64)
 	if err != nil {
@@ -283,6 +315,7 @@ func (h *JobHandler) UnsaveJob(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusNoContent).Send(nil)
 }
 
+// ListSavedJobs handles GET /api/jobs/user/:userId/saved
 func (h *JobHandler) ListSavedJobs(c *fiber.Ctx) error {
 	userID, err := strconv.ParseUint(c.Params("userId"), 10, 64)
 	if err != nil {
@@ -297,6 +330,7 @@ func (h *JobHandler) ListSavedJobs(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(savedJobs)
 }
 
+// CheckIfJobIsSaved handles GET /api/jobs/user/:userId/saved/:jobId
 func (h *JobHandler) CheckIfJobIsSaved(c *fiber.Ctx) error {
 	userID, err := strconv.ParseUint(c.Params("userId"), 10, 64)
 	if err != nil {

@@ -5,6 +5,7 @@ import (
 	"backend/handler/jobhandler"
 	"backend/pkg/model/authmodel"
 	"backend/pkg/model/jobmodel"
+	"backend/pkg/pdfextractor"
 	"backend/pkg/service/authservice"
 	"backend/pkg/service/jobservice"
 	"backend/routes"
@@ -53,9 +54,8 @@ func main() {
 
 	// สร้าง AuthHandler
 	authHandler := authhandler.NewAuthHandler(authService)
-
-	jobService := jobservice.NewJobService(db)
-
+	pdfExtractor := pdfextractor.NewPdfExtractor()
+	jobService := jobservice.NewJobService(db, pdfExtractor)
 	jobHandler := jobhandler.NewJobHandler(jobService)
 
 	routes.RegisterRoutes(app, authHandler, jobHandler)

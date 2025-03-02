@@ -8,7 +8,9 @@ require (
 	firebase.google.com/go v3.13.0+incompatible
 	github.com/gofiber/fiber/v2 v2.52.6
 	github.com/golang-jwt/jwt v3.2.2+incompatible
+	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
+	github.com/ledongthuc/pdf v0.0.0-20240201131950-da5b75280b06
 	github.com/pkg/errors v0.9.1
 	google.golang.org/api v0.220.0
 	gorm.io/driver/mysql v1.5.7
@@ -41,7 +43,6 @@ require (
 	github.com/go-sql-driver/mysql v1.9.0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.4 // indirect
 	github.com/googleapis/gax-go/v2 v2.14.1 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
