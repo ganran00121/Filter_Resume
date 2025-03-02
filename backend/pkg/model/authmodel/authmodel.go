@@ -38,38 +38,6 @@ type CompanyProfile struct {
 	UpdatedAt   time.Time
 }
 
-type SavedJob struct {
-	ID        uint `gorm:"primaryKey"`
-	UserID    uint `gorm:"not null"`
-	JobID     uint `gorm:"not null"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
-}
-
-type JobPost struct {
-	ID          uint   `gorm:"primaryKey"`
-	CompanyID   uint   `gorm:"not null"`
-	Title       string `gorm:"not null"`
-	Description string
-	Location    string
-	SalaryRange string
-	Quantity    int
-	JobPosition string
-	Status      string `gorm:"type:enum('open', 'closed');default:'open'"`
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-}
-
-type JobApplication struct {
-	ID         uint `gorm:"primaryKey"`
-	JobID      uint `gorm:"not null"`
-	UserID     uint `gorm:"not null"`
-	ResumeFile string
-	Status     string `gorm:"type:enum('pending', 'accepted', 'rejected');not null"`
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-}
-
 type Message struct {
 	ID          uint   `gorm:"primaryKey"`
 	SenderID    uint   `gorm:"not null"`

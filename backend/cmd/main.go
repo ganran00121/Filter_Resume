@@ -2,8 +2,11 @@ package main
 
 import (
 	"backend/handler/authhandler"
+	"backend/handler/jobhandler"
 	"backend/pkg/model/authmodel"
+	"backend/pkg/model/jobmodel"
 	"backend/pkg/service/authservice"
+	"backend/pkg/service/jobservice"
 	"backend/routes"
 	"fmt"
 	"log"
@@ -43,7 +46,7 @@ func main() {
 		log.Fatal(errorWrapper)
 	}
 
-	db.AutoMigrate(&authmodel.User{}, &authmodel.CompanyProfile{}, &authmodel.JobApplication{}, &authmodel.JobPost{}, authmodel.SavedJob{}, &authmodel.Message{}, &authmodel.Notification{})
+	db.AutoMigrate(&authmodel.User{}, &authmodel.CompanyProfile{}, &jobmodel.JobApplication{}, &jobmodel.JobPost{}, &jobmodel.SavedJob{}, &authmodel.Message{}, &authmodel.Notification{})
 	// mockdata.InsertMockData(db)
 	//สร้าง AuthService
 	authService := authservice.NewAuthService(db)
@@ -51,7 +54,11 @@ func main() {
 	// สร้าง AuthHandler
 	authHandler := authhandler.NewAuthHandler(authService)
 
-	routes.RegisterAuthRoutes(app, authHandler)
+	jobService := jobservice.NewJobService(db)
+
+	jobHandler := jobhandler.NewJobHandler(jobService)
+
+	routes.RegisterRoutes(app, authHandler, jobHandler)
 
 	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusOK)
