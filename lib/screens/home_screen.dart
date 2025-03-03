@@ -1,6 +1,46 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
+String Base_url = "";
+
+void main() async {
+  print("MAIN MAIN MAIN ");
+
+  WidgetsFlutterBinding.ensureInitialized(); // Add this line
+  await dotenv.load(fileName: ".env");
+  Base_url = dotenv.env['BASE_URL'] ?? 'BASE_URL ฆฆฆ';
+  print("MAIN MAIN MAIN ");
+  await fetchData();
+}
+
+Future<void> fetchData() async {
+  print("ก่อนยิง นะจ๊");
+  final url = Uri.parse('${Base_url}/health'); // ตัวอย่าง API
+  print("หลังยิง นะจ๊");
+  try {
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      // สำเร็จ
+      final data = jsonDecode(response.body); // แปลง JSON response เป็น Dart object
+      print(data); // แสดงข้อมูล
+      print(data['title']); // เข้าถึงข้อมูลใน JSON
+      print(data['body']);
+
+    } else {
+      // ไม่สำเร็จ (เช่น 404 Not Found, 500 Internal Server Error)
+      print('Request failed with status: ${response.statusCode}.');
+    }
+  } catch (error) {
+    // เกิดข้อผิดพลาดอื่นๆ (เช่น ไม่มี internet)
+    print('Error: $error');
+  }
+}
 
 class HomeScreen extends StatelessWidget {
+
   final List<Job> jobs = [
     Job(
       title: "Full Stack Developer (WFH) [J108]",
@@ -54,6 +94,7 @@ class HomeScreen extends StatelessWidget {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
               ),
               SizedBox(height: 15),
+              Text("${Base_url}"),
               Expanded(
                 child: ListView.builder(
                   itemCount: jobs.length,
