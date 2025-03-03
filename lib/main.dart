@@ -1,6 +1,7 @@
 import 'screens/signin_screen.dart';
 import 'package:flutter/material.dart';
 import 'screens/home_screen.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 // import 'screens/explore_screen.dart';
 import 'screens/chat_screen.dart';
 import 'screens/company_screen.dart';
@@ -8,6 +9,10 @@ import 'screens/profile_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 Future<void> main() async {
+  AndroidOptions _getAndroidOptions() => const AndroidOptions(
+    encryptedSharedPreferences: true,
+  );
+  final storage = FlutterSecureStorage(aOptions: _getAndroidOptions());
   await dotenv.load(fileName: ".env");
   runApp(MyApp());
 }
@@ -30,6 +35,9 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
+  final _storage = FlutterSecureStorage(); // Create storage instance here
+  bool _isLoading = true; // Add a loading state
+  bool _isLoggedIn = false;
 
   final List<Widget> _pages = [
     HomeScreen(),
@@ -49,16 +57,35 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
-    // Show the login popup when the app starts
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true, // Allow the sheet to be full screen
-        builder: (BuildContext context) {
-          return SigninPopup();
-        },
-      );
+    _checkLoginStatus(); // Call a separate async function
+  }
+
+
+  Future<void> _checkLoginStatus() async {
+    String? storedToken = await _storage.read(key: 'auth_token');
+    setState(() {
+      _isLoading = false;
+      if(storedToken != null){
+        _isLoggedIn = true;
+        print("isLoggedIn = true - token : $storedToken");
+      }else{
+        _isLoggedIn = false;
+        print("isLoggedIn = false - token : $storedToken");
+      }
     });
+
+    // if (true) {
+    if (storedToken == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true, // Allow the sheet to be full screen
+          builder: (BuildContext context) {
+            return SigninPopup();
+          },
+        );
+      });
+    }
   }
 
   @override
@@ -149,9 +176,12 @@ class _MainScreenState extends State<MainScreen> {
 class SigninPopup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return WillPopScope(
+        onWillPop: () async => false, // Prevent back button and gesture
+    child: Container(
       height: MediaQuery.of(context).size.height, // Set the height to full screen
       child: SigninScreen(), // Use your existing SigninScreen here
+    )
     );
   }
 }
