@@ -74,8 +74,8 @@ class _MainScreenState extends State<MainScreen> {
       }
     });
 
-    if (true) {
-    // if (storedToken == null) {
+    // if (true) {
+    if (storedToken == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         showModalBottomSheet(
           context: context,
