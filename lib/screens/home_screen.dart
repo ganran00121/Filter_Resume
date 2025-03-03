@@ -1,6 +1,50 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
+  @override
+  _HomeScreenState createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    fetchData();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      fetchData();
+    }
+  }
+
+  Future<void> fetchData() async {
+    print('FetchData');
+    String baseUrl = dotenv.env['BASE_URL'] ?? 'default_url';
+    print('API baseUrl: ${baseUrl}');
+    // ตรวจสอบให้แน่ใจว่า baseUrl มี http:// หรือ https:// นำหน้า
+    if (!baseUrl.startsWith('http')) {
+      baseUrl = 'https://$baseUrl';
+    }
+
+    Uri apiUri = Uri.parse(baseUrl).replace(path: '${Uri.parse(baseUrl).path}/health');
+    print("URL : ${apiUri}");
+    // ยิง API
+    var response = await http.get(apiUri);
+    print('API Response: ${response.body}');
+  }
+
   final List<Job> jobs = [
     Job(
       title: "Full Stack Developer (WFH) [J108]",
