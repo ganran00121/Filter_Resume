@@ -30,7 +30,7 @@ func NewGeminiService(apiKey, apiEndpoint string) *GeminiService {
 
 // GenerateContent interacts with the Gemini API.
 func (s *GeminiService) GenerateContent(text string) (string, error) {
-	endpoint := s.apiEndpoint + s.apiKey
+	endpoint := s.apiEndpoint + s.apiKey //Compose the API endpoint
 	requestBody, err := json.Marshal(map[string]interface{}{
 		"contents": []map[string]interface{}{
 			{
@@ -53,7 +53,7 @@ func (s *GeminiService) GenerateContent(text string) (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyBytes, _ := io.ReadAll(resp.Body) // Read the body for the error message
 		return "", fmt.Errorf("API request failed with status %s: %s", resp.Status, string(bodyBytes))
 	}
 

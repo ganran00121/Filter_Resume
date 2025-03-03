@@ -26,6 +26,7 @@ type IJobHandler interface {
 	UpdateJobApplication(c *fiber.Ctx) error
 	ListJobApplicationsForJob(c *fiber.Ctx) error
 	ListJobApplicationsForUser(c *fiber.Ctx) error
+	ListJobApplications(c *fiber.Ctx) error
 
 	SaveJob(c *fiber.Ctx) error
 	UnsaveJob(c *fiber.Ctx) error
@@ -61,7 +62,7 @@ func (h *JobHandler) CreateJobPost(c *fiber.Ctx) error {
 func (h *JobHandler) GetJobPost(c *fiber.Ctx) error {
 	id, err := strconv.ParseUint(c.Params("id"), 10, 64)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid job ID"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid job ID7"})
 	}
 
 	jobPost, err := h.JobService.GetJobPostByID(uint(id))
@@ -251,7 +252,7 @@ func (h *JobHandler) UpdateJobApplication(c *fiber.Ctx) error {
 func (h *JobHandler) ListJobApplicationsForJob(c *fiber.Ctx) error {
 	jobID, err := strconv.ParseUint(c.Params("jobId"), 10, 64)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid job ID"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid job ID2"})
 	}
 
 	applications, err := h.JobService.ListJobApplicationsByJobID(uint(jobID))
@@ -284,7 +285,7 @@ func (h *JobHandler) SaveJob(c *fiber.Ctx) error {
 	}
 	jobID, err := strconv.ParseUint(c.Params("jobId"), 10, 64)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid job ID"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid job ID5"})
 	}
 
 	if err := h.JobService.SaveJob(uint(userID), uint(jobID)); err != nil {
@@ -302,7 +303,7 @@ func (h *JobHandler) UnsaveJob(c *fiber.Ctx) error {
 	}
 	jobID, err := strconv.ParseUint(c.Params("jobId"), 10, 64)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid job ID"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid job ID3"})
 	}
 
 	if err := h.JobService.UnsaveJob(uint(userID), uint(jobID)); err != nil {
@@ -338,7 +339,7 @@ func (h *JobHandler) CheckIfJobIsSaved(c *fiber.Ctx) error {
 	}
 	jobID, err := strconv.ParseUint(c.Params("jobId"), 10, 64)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid job ID"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid job ID4"})
 	}
 	isSaved, err := h.JobService.IsJobSaved(uint(userID), uint(jobID))
 	if err != nil {
@@ -346,4 +347,36 @@ func (h *JobHandler) CheckIfJobIsSaved(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{"is_saved": isSaved})
+}
+
+// ListJobApplications handles GET /api/jobs/applications with optional status filter.
+func (h *JobHandler) ListJobApplications(c *fiber.Ctx) error {
+	status := c.Query("status")
+	userIDStr := c.Query("user_id")
+	jobIDStr := c.Query("job_id")
+
+	var userID uint64
+	var err error
+
+	if userIDStr != "" {
+		userID, err = strconv.ParseUint(userIDStr, 10, 64)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid user ID"})
+		}
+	}
+
+	var jobID uint64
+	if jobIDStr != "" {
+		jobID, err = strconv.ParseUint(jobIDStr, 10, 64)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid job ID"})
+		}
+	}
+
+	applications, err := h.JobService.ListJobApplicationsWithFilter(status, uint(userID), uint(jobID))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to retrieve job applications"})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(applications)
 }

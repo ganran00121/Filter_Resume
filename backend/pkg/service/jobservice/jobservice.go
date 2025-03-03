@@ -2,7 +2,8 @@ package jobservice
 
 import (
 	"backend/pkg/model/jobmodel"
-	"backend/pkg/pdfextractor" // Import the pdfextractor package
+	"backend/pkg/pdfextractor"
+	"backend/pkg/service/geminiservice"
 	"errors"
 	"fmt"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// IJobService interface
 type IJobService interface {
 	CreateJobPost(jobPost *jobmodel.JobPost) error
 	GetJobPostByID(id uint) (*jobmodel.JobPost, error)
@@ -21,72 +23,109 @@ type IJobService interface {
 	ListJobPostsByCompanyID(companyID uint) ([]jobmodel.JobPost, error)
 	ListOpenJobPosts() ([]jobmodel.JobPost, error)
 	ListClosedJobPosts() ([]jobmodel.JobPost, error)
-
 	CreateJobApplication(application *jobmodel.JobApplication, resumeFile []byte) (string, error)
 	GetJobApplicationByID(id uint) (*jobmodel.JobApplication, error)
 	UpdateJobApplication(application *jobmodel.JobApplication) error
 	ListJobApplicationsByJobID(jobID uint) ([]jobmodel.JobApplication, error)
 	ListJobApplicationsByUserID(userID uint) ([]jobmodel.JobApplication, error)
-
+	ListJobApplicationsWithFilter(status string, userID, jobID uint) ([]jobmodel.JobApplication, error) //  CRITICAL: New method
 	SaveJob(userID, jobID uint) error
 	UnsaveJob(userID, jobID uint) error
 	ListSavedJobs(userID uint) ([]jobmodel.SavedJob, error)
 	IsJobSaved(userID, jobID uint) (bool, error)
+	GetAllApplicants() ([]jobmodel.JobApplication, error)
 }
 
 type JobService struct {
-	DB           *gorm.DB
-	PdfExtractor pdfextractor.IPdfExtractor
+	DB            *gorm.DB
+	PdfExtractor  pdfextractor.IPdfExtractor
+	GeminiService geminiservice.IGeminiService // Inject Gemini Service
 }
 
-// NewJobService creates a new JobService.
-func NewJobService(db *gorm.DB, pdfExtractor pdfextractor.IPdfExtractor) *JobService {
-	return &JobService{DB: db, PdfExtractor: pdfExtractor}
+// NewJobService creates a new JobService, injecting dependencies.
+func NewJobService(db *gorm.DB, pdfExtractor pdfextractor.IPdfExtractor, geminiService geminiservice.IGeminiService) *JobService {
+	return &JobService{DB: db, PdfExtractor: pdfExtractor, GeminiService: geminiService}
 }
 
-// CreateJobApplication handles job application creation and resume upload.
+// CreateJobApplication handles job application creation, resume upload, and Gemini processing.
 func (s *JobService) CreateJobApplication(application *jobmodel.JobApplication, resumeFile []byte) (string, error) {
-	// 1. Generate a unique file name.
+	// 1. Generate unique file name.
 	uniqueID := uuid.New().String()
 	fileName := uniqueID + ".pdf"
-	filePath := filepath.Join("uploads", "resumes", fileName) // Store in uploads/resumes
+	filePath := filepath.Join("uploads", "resumes", fileName)
 
-	// 2. Create the directory if it doesn't exist.
-	err := os.MkdirAll(filepath.Dir(filePath), 0755) // 0755 permissions
+	// 2. Create directory.
+	err := os.MkdirAll(filepath.Dir(filePath), 0755)
 	if err != nil {
 		return "", fmt.Errorf("failed to create directory: %w", err)
 	}
 
-	// 3. Save the resume file.
-	err = os.WriteFile(filePath, resumeFile, 0644) // 0644 permissions
+	// 3. Save resume file.
+	err = os.WriteFile(filePath, resumeFile, 0644)
 	if err != nil {
 		return "", fmt.Errorf("failed to save resume file: %w", err)
 	}
 
-	//4. Extract text from PDF
+	// 4. Extract text from PDF.
 	extractedText, err := s.PdfExtractor.ExtractText(filePath)
 	if err != nil {
-		//Remove file if text extraction failed.
-		os.Remove(filePath)
-		return "", fmt.Errorf("failed to extract text from pdf: %w", err)
+		os.Remove(filePath) // Clean up on extraction failure.
+		return "", fmt.Errorf("failed to extract text from PDF: %w", err)
 	}
-	fmt.Println(extractedText) // Print the extracted text.  In a real application you will use the text.
 
-	// 5. Set the file path in the application model.
+	// 5. Set file path.
 	application.ResumeFile = filePath
 
-	// 6. Save the application to the database.
-	err = s.DB.Create(application).Error
-	if err != nil {
-		// Clean up the file if database save fails.  Important for consistency.
+	// --- Transaction Start ---
+	tx := s.DB.Begin()
+	if tx.Error != nil {
 		os.Remove(filePath)
-		return "", fmt.Errorf("failed to save application to database: %w", err)
+		return "", fmt.Errorf("failed to begin database transaction: %w", tx.Error)
+	}
+	// Use defer for rollback in case of panic
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 6. Save application.
+	err = tx.Create(application).Error // Use tx, not s.DB
+	if err != nil {
+		tx.Rollback()       // Rollback on application creation failure
+		os.Remove(filePath) // Clean up.
+		return "", fmt.Errorf("failed to save application: %w", err)
+
+	}
+
+	// 7. Process with Gemini.
+	generatedText, err := s.GeminiService.GenerateContent(extractedText)
+	if err != nil {
+		//Don't rollback here. Log the error, and continue without Gemini
+		fmt.Printf("Gemini API call failed: %v\n", err)
+
+	} else {
+		// 8.  Store response in JobApplication
+		// *Important*: We're updating the *existing* application object
+		// that's already in the database (within the transaction).
+		application.GeminiSummary = generatedText
+		if err := tx.Save(application).Error; err != nil { // Use tx.Save, not tx.Create
+			tx.Rollback() // Rollback if saving the summary fails
+			os.Remove(filePath)
+			return "", fmt.Errorf("failed to save Gemini summary: %w", err)
+		}
+
+	}
+
+	// --- Transaction Commit ---
+	if err := tx.Commit().Error; err != nil {
+		os.Remove(filePath) //Clean up file
+		return "", fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return filePath, nil
 }
 
-// All Other Function in Job Service
 func (s *JobService) GetJobPostByID(id uint) (*jobmodel.JobPost, error) {
 	var jobPost jobmodel.JobPost
 	err := s.DB.First(&jobPost, id).Error
@@ -207,6 +246,42 @@ func (s *JobService) IsJobSaved(userID, jobID uint) (bool, error) {
 		return false, err
 	}
 	return count > 0, nil
+}
+
+func (s *JobService) GetAllApplicants() ([]jobmodel.JobApplication, error) {
+	var applications []jobmodel.JobApplication
+	err := s.DB.Find(&applications).Error // Find *ALL* applications
+	return applications, err
+}
+
+// ListJobApplicationsWithFilter retrieves job applications with optional filters.
+func (s *JobService) ListJobApplicationsWithFilter(status string, userID, jobID uint) ([]jobmodel.JobApplication, error) {
+	var applications []jobmodel.JobApplication
+	query := s.DB.Model(&jobmodel.JobApplication{})
+
+	if status != "" {
+		switch status {
+		case string(jobmodel.JobApplicationStatusPending):
+			query = query.Where("status = ?", jobmodel.JobApplicationStatusPending)
+		case string(jobmodel.JobApplicationStatusAccepted):
+			query = query.Where("status = ?", jobmodel.JobApplicationStatusAccepted)
+		case string(jobmodel.JobApplicationStatusRejected):
+			query = query.Where("status = ?", jobmodel.JobApplicationStatusRejected)
+		default:
+			// Handle invalid status values (optional)
+			return nil, fmt.Errorf("invalid status filter: %s", status)
+
+		}
+	}
+	if userID != 0 {
+		query = query.Where("user_id = ?", userID)
+	}
+	if jobID != 0 {
+		query = query.Where("job_id = ?", jobID)
+	}
+
+	err := query.Find(&applications).Error
+	return applications, err
 }
 
 func (s *JobService) CreateJobPost(jobPost *jobmodel.JobPost) error {

@@ -7,6 +7,7 @@ import (
 	"backend/pkg/model/jobmodel"
 	"backend/pkg/pdfextractor"
 	"backend/pkg/service/authservice"
+	"backend/pkg/service/geminiservice"
 	"backend/pkg/service/jobservice"
 	"backend/routes"
 	"fmt"
@@ -47,15 +48,29 @@ func main() {
 		log.Fatal(errorWrapper)
 	}
 
-	db.AutoMigrate(&authmodel.User{}, &authmodel.CompanyProfile{}, &jobmodel.JobApplication{}, &jobmodel.JobPost{}, &jobmodel.SavedJob{}, &authmodel.Message{}, &authmodel.Notification{})
+	err = db.AutoMigrate(
+		&authmodel.User{},
+		&authmodel.CompanyProfile{},
+		&authmodel.Message{},
+		&authmodel.Notification{},
+		&jobmodel.JobPost{},
+		&jobmodel.JobApplication{},
+		&jobmodel.SavedJob{},
+		&jobmodel.Message{},
+	)
 	// mockdata.InsertMockData(db)
-	//สร้าง AuthService
+	// --- Service Initialization ---
 	authService := authservice.NewAuthService(db)
-
-	// สร้าง AuthHandler
-	authHandler := authhandler.NewAuthHandler(authService)
 	pdfExtractor := pdfextractor.NewPdfExtractor()
-	jobService := jobservice.NewJobService(db, pdfExtractor)
+
+	// Get Gemini API key from environment variable.
+	geminiAPIKey := os.Getenv("GEMINI_API_KEY")
+	geminiEndpoint := "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="
+	geminiService := geminiservice.NewGeminiService(geminiAPIKey, geminiEndpoint) // Inject API Key
+	jobService := jobservice.NewJobService(db, pdfExtractor, geminiService)       // Inject PdfExtractor and GeminiService
+
+	// Initialize handlers
+	authHandler := authhandler.NewAuthHandler(authService)
 	jobHandler := jobhandler.NewJobHandler(jobService)
 
 	routes.RegisterRoutes(app, authHandler, jobHandler)

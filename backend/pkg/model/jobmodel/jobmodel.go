@@ -25,20 +25,29 @@ type JobPost struct {
 }
 
 type JobApplication struct {
-	ID         uint `gorm:"primaryKey"`
-	JobID      uint `gorm:"not null"`
-	UserID     uint `gorm:"not null"`
-	ResumeFile string
-	Status     string `gorm:"type:enum('pending', 'accepted', 'rejected');default:'pending'"`
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	ID            uint `gorm:"primaryKey"`
+	JobID         uint `gorm:"not null"`
+	UserID        uint `gorm:"not null"`
+	ResumeFile    string
+	Status        string `gorm:"type:enum('pending', 'accepted', 'rejected');default:'pending'"`
+	GeminiSummary string `gorm:"type:longtext"`
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 type Message struct {
 	ID          uint   `gorm:"primaryKey"`
 	SenderID    uint   `gorm:"not null"` // Foreign key referencing Users
 	ReceiverID  uint   `gorm:"not null"` // Foreign key referencing Users
-	MessageText string `gorm:"not null"`
+	MessageText string `gorm:"type:longtext;not null"`
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
+
+type JobApplicationStatus string // Capitalize 'J', 'A', and 'S'
+
+const (
+	JobApplicationStatusPending  JobApplicationStatus = "pending"  // Capitalize 'J', 'A', 'S', and 'P'
+	JobApplicationStatusAccepted JobApplicationStatus = "accepted" // Capitalize 'J', 'A', 'S', and 'A'
+	JobApplicationStatusRejected JobApplicationStatus = "rejected" // Capitalize 'J', 'A', 'S', and 'R'
+)

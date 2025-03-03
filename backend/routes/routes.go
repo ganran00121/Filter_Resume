@@ -7,12 +7,14 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+// RegisterAuthRoutes sets up routes for authentication.
 func RegisterAuthRoutes(app *fiber.App, authHandler *authhandler.AuthHandler) {
 	authGroup := app.Group("/auth")
-	authGroup.Post("/register", authHandler.Register)
-	authGroup.Post("/login", authHandler.Login)
+	authGroup.Post("/register", authHandler.Register) // POST /auth/register
+	authGroup.Post("/login", authHandler.Login)       // POST /auth/login
 }
 
+// RegisterJobRoutes sets up routes for job-related operations.
 func RegisterJobRoutes(app *fiber.App, jobHandler *jobhandler.JobHandler) {
 	jobGroup := app.Group("/api/jobs")
 
@@ -22,7 +24,7 @@ func RegisterJobRoutes(app *fiber.App, jobHandler *jobhandler.JobHandler) {
 	jobGroup.Put("/:id", jobHandler.UpdateJobPost)                        // PUT /api/jobs/:id
 	jobGroup.Delete("/:id", jobHandler.DeleteJobPost)                     // DELETE /api/jobs/:id
 	jobGroup.Get("/", jobHandler.ListJobPosts)                            // GET /api/jobs
-	jobGroup.Get("/company/:companyId", jobHandler.ListJobPostsByCompany) // GET /api/jobs/company/:companyId
+	jobGroup.Get("/company/:companyId", jobHandler.ListJobPostsByCompany) // GET /api/jobs/company/:companyId  (Note: companyId is actually UserId)
 	jobGroup.Get("/open", jobHandler.ListOpenJobPosts)                    // GET /api/jobs/open
 	jobGroup.Get("/closed", jobHandler.ListClosedJobPosts)                // GET /api/jobs/closed
 
@@ -32,6 +34,7 @@ func RegisterJobRoutes(app *fiber.App, jobHandler *jobhandler.JobHandler) {
 	jobGroup.Put("/applications/:id", jobHandler.UpdateJobApplication)                // PUT /api/jobs/applications/:id
 	jobGroup.Get("/:jobId/applications", jobHandler.ListJobApplicationsForJob)        // GET /api/jobs/:jobId/applications
 	jobGroup.Get("/user/:userId/applications", jobHandler.ListJobApplicationsForUser) // GET /api/jobs/user/:userId/applications
+	jobGroup.Get("/applications", jobHandler.ListJobApplications)                     // GET /api/jobs/applications?status=pending  (and other status values, or no status for all)
 
 	// Saved Job Routes
 	jobGroup.Post("/user/:userId/save/:jobId", jobHandler.SaveJob)           // POST /api/jobs/user/:userId/save/:jobId
@@ -40,6 +43,7 @@ func RegisterJobRoutes(app *fiber.App, jobHandler *jobhandler.JobHandler) {
 	jobGroup.Get("/user/:userId/saved/:jobId", jobHandler.CheckIfJobIsSaved) // GET /api/jobs/user/:userId/saved/:jobId
 }
 
+// RegisterRoutes sets up all routes for the application.  This is the function you call in main.go.
 func RegisterRoutes(app *fiber.App, authHandler *authhandler.AuthHandler, jobHandler *jobhandler.JobHandler) {
 	RegisterAuthRoutes(app, authHandler)
 	RegisterJobRoutes(app, jobHandler)
