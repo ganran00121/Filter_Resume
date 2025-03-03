@@ -3,43 +3,47 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-String Base_url = "";
-
-void main() async {
-  print("MAIN MAIN MAIN ");
-
-  WidgetsFlutterBinding.ensureInitialized(); // Add this line
-  await dotenv.load(fileName: ".env");
-  Base_url = dotenv.env['BASE_URL'] ?? 'BASE_URL ฆฆฆ';
-  print("MAIN MAIN MAIN ");
-  await fetchData();
+class HomeScreen extends StatefulWidget {
+  @override
+  _HomeScreenState createState() => _HomeScreenState();
 }
 
-Future<void> fetchData() async {
-  print("ก่อนยิง นะจ๊");
-  final url = Uri.parse('${Base_url}/health'); // ตัวอย่าง API
-  print("หลังยิง นะจ๊");
-  try {
-    final response = await http.get(url);
-
-    if (response.statusCode == 200) {
-      // สำเร็จ
-      final data = jsonDecode(response.body); // แปลง JSON response เป็น Dart object
-      print(data); // แสดงข้อมูล
-      print(data['title']); // เข้าถึงข้อมูลใน JSON
-      print(data['body']);
-
-    } else {
-      // ไม่สำเร็จ (เช่น 404 Not Found, 500 Internal Server Error)
-      print('Request failed with status: ${response.statusCode}.');
-    }
-  } catch (error) {
-    // เกิดข้อผิดพลาดอื่นๆ (เช่น ไม่มี internet)
-    print('Error: $error');
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    fetchData();
   }
-}
 
-class HomeScreen extends StatelessWidget {
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      fetchData();
+    }
+  }
+
+  Future<void> fetchData() async {
+    print('FetchData');
+    String baseUrl = dotenv.env['BASE_URL'] ?? 'default_url';
+    print('API baseUrl: ${baseUrl}');
+    // ตรวจสอบให้แน่ใจว่า baseUrl มี http:// หรือ https:// นำหน้า
+    if (!baseUrl.startsWith('http')) {
+      baseUrl = 'https://$baseUrl';
+    }
+
+    Uri apiUri = Uri.parse(baseUrl).replace(path: '${Uri.parse(baseUrl).path}/health');
+    print("URL : ${apiUri}");
+    // ยิง API
+    var response = await http.get(apiUri);
+    print('API Response: ${response.body}');
+  }
 
   final List<Job> jobs = [
     Job(
@@ -94,7 +98,6 @@ class HomeScreen extends StatelessWidget {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
               ),
               SizedBox(height: 15),
-              Text("${Base_url}"),
               Expanded(
                 child: ListView.builder(
                   itemCount: jobs.length,
