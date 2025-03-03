@@ -29,11 +29,12 @@ func (s *AuthService) Register(registerRequest *authmodel.RegisterRequest) error
 	}
 
 	newUser := authmodel.User{
-		Email:    registerRequest.Email,
-		Name:     registerRequest.Name,
-		Password: registerRequest.Password,
-		Phone:    registerRequest.Phone,
-		UserType: registerRequest.UserType,
+		Email:       registerRequest.Email,
+		Name:        registerRequest.Name,
+		Password:    registerRequest.Password,
+		Phone:       registerRequest.Phone,
+		UserType:    registerRequest.UserType,
+		CompanyName: registerRequest.CompanyName,
 	}
 
 	if err := s.DB.Create(&newUser).Error; err != nil {

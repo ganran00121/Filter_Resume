@@ -22,11 +22,12 @@ type LoginRequest struct {
 }
 
 type RegisterRequest struct {
-	Email    string `json:"email" binding:"required"`
-	Name     string `json:"name" binding:"required"`
-	Password string `json:"password" binding:"required"`
-	Phone    string `json:"phone" binding:"required"`
-	UserType string `json:"user_type" binding:"required,oneof=applicant company"`
+	Email       string  `json:"email" binding:"required"`
+	Name        string  `json:"name" binding:"required"`
+	Password    string  `json:"password" binding:"required"`
+	Phone       string  `json:"phone" binding:"required"`
+	UserType    string  `json:"user_type" binding:"required,oneof=applicant company"`
+	CompanyName *string `json:"company_name"`
 }
 
 type CompanyProfile struct {

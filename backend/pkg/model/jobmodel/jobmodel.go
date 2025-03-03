@@ -1,6 +1,17 @@
 package jobmodel
 
-import "time"
+import (
+	"backend/pkg/model/authmodel"
+	"time"
+)
+
+type JobApplicationStatus string // Capitalize 'J', 'A', and 'S'
+
+const (
+	JobApplicationStatusPending  JobApplicationStatus = "pending"  // Capitalize 'J', 'A', 'S', and 'P'
+	JobApplicationStatusAccepted JobApplicationStatus = "accepted" // Capitalize 'J', 'A', 'S', and 'A'
+	JobApplicationStatusRejected JobApplicationStatus = "rejected" // Capitalize 'J', 'A', 'S', and 'R'
+)
 
 type SavedJob struct {
 	ID        uint `gorm:"primaryKey"`
@@ -8,31 +19,37 @@ type SavedJob struct {
 	JobID     uint `gorm:"not null"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	User      authmodel.User `gorm:"foreignKey:UserID"` //For preloading
+	JobPost   JobPost        `gorm:"foreignKey:JobID"`  //For preloading
+
 }
 
 type JobPost struct {
-	ID          uint   `gorm:"primaryKey"`
-	UserID      uint   `gorm:"not null"`
-	Title       string `gorm:"not null"`
-	Description string
+	ID          uint           `gorm:"primaryKey"`
+	UserID      uint           `gorm:"not null"`          // Foreign key referencing Users
+	User        authmodel.User `gorm:"foreignKey:UserID"` // Add this line for the relationship
+	Title       string         `gorm:"not null"`
+	Description string         `gorm:"type:text"` // Use 'text' for longer descriptions
 	Location    string
 	SalaryRange string
 	Quantity    int
 	JobPosition string
-	Status      bool `gorm:"default:true"`
+	Status      bool `gorm:"default:true"` // Use boolean; true for open, false for closed
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
 
 type JobApplication struct {
-	ID            uint `gorm:"primaryKey"`
-	JobID         uint `gorm:"not null"`
-	UserID        uint `gorm:"not null"`
+	ID            uint           `gorm:"primaryKey"`
+	JobID         uint           `gorm:"not null"`
+	UserID        uint           `gorm:"not null"`
+	User          authmodel.User `gorm:"foreignKey:UserID"` // Add for relationship
+	JobPost       JobPost        `gorm:"foreignKey:JobID"`  // Add for relationship
 	ResumeFile    string
-	Status        string `gorm:"type:enum('pending', 'accepted', 'rejected');default:'pending'"`
-	GeminiSummary string `gorm:"type:longtext"`
+	Status        JobApplicationStatus `gorm:"type:varchar(20);default:'pending'"` // Use custom type
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
+	GeminiSummary string `gorm:"type:text"` // Add GeminiSummary
 }
 
 type Message struct {
@@ -43,11 +60,3 @@ type Message struct {
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
-
-type JobApplicationStatus string // Capitalize 'J', 'A', and 'S'
-
-const (
-	JobApplicationStatusPending  JobApplicationStatus = "pending"  // Capitalize 'J', 'A', 'S', and 'P'
-	JobApplicationStatusAccepted JobApplicationStatus = "accepted" // Capitalize 'J', 'A', 'S', and 'A'
-	JobApplicationStatusRejected JobApplicationStatus = "rejected" // Capitalize 'J', 'A', 'S', and 'R'
-)

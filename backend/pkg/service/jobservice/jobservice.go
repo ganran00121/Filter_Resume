@@ -19,7 +19,7 @@ type IJobService interface {
 	GetJobPostByID(id uint) (*jobmodel.JobPost, error)
 	UpdateJobPost(jobPost *jobmodel.JobPost) error
 	DeleteJobPost(id uint) error
-	ListJobPosts() ([]jobmodel.JobPost, error)
+	ListJobPosts() ([]jobmodel.JobPost, error) // Modified return type
 	ListJobPostsByCompanyID(companyID uint) ([]jobmodel.JobPost, error)
 	ListOpenJobPosts() ([]jobmodel.JobPost, error)
 	ListClosedJobPosts() ([]jobmodel.JobPost, error)
@@ -28,7 +28,7 @@ type IJobService interface {
 	UpdateJobApplication(application *jobmodel.JobApplication) error
 	ListJobApplicationsByJobID(jobID uint) ([]jobmodel.JobApplication, error)
 	ListJobApplicationsByUserID(userID uint) ([]jobmodel.JobApplication, error)
-	ListJobApplicationsWithFilter(status string, userID, jobID uint) ([]jobmodel.JobApplication, error) //  CRITICAL: New method
+	ListJobApplicationsWithFilter(status string, userID, jobID uint) ([]jobmodel.JobApplication, error) // CRITICAL: New method
 	SaveJob(userID, jobID uint) error
 	UnsaveJob(userID, jobID uint) error
 	ListSavedJobs(userID uint) ([]jobmodel.SavedJob, error)
@@ -47,7 +47,70 @@ func NewJobService(db *gorm.DB, pdfExtractor pdfextractor.IPdfExtractor, geminiS
 	return &JobService{DB: db, PdfExtractor: pdfExtractor, GeminiService: geminiService}
 }
 
-// CreateJobApplication handles job application creation, resume upload, and Gemini processing.
+func (s *JobService) CreateJobPost(jobPost *jobmodel.JobPost) error {
+	return s.DB.Create(jobPost).Error
+}
+
+func (s *JobService) GetJobPostByID(id uint) (*jobmodel.JobPost, error) {
+	var jobPost jobmodel.JobPost
+	err := s.DB.First(&jobPost, id).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil // Return nil, nil if not found
+	}
+	return &jobPost, err
+}
+
+func (s *JobService) UpdateJobPost(jobPost *jobmodel.JobPost) error {
+	result := s.DB.Model(jobPost).Updates(jobPost)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound // Or a custom error indicating no update happened
+	}
+	return nil
+}
+
+func (s *JobService) DeleteJobPost(id uint) error {
+	result := s.DB.Delete(&jobmodel.JobPost{}, id)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
+// ListJobPosts retrieves all job posts, preloading the associated User.
+func (s *JobService) ListJobPosts() ([]jobmodel.JobPost, error) {
+	var jobPosts []jobmodel.JobPost
+	err := s.DB.Preload("User").Find(&jobPosts).Error // Preload the User
+	return jobPosts, err
+}
+
+// ListJobPostsByCompanyID now filters by UserID (due to model change) and preloads User.
+func (s *JobService) ListJobPostsByCompanyID(userID uint) ([]jobmodel.JobPost, error) {
+	var jobPosts []jobmodel.JobPost
+	err := s.DB.Preload("User").Where("user_id = ?", userID).Find(&jobPosts).Error // Preload and filter by UserID
+	return jobPosts, err
+}
+
+// Added: List only open job posts
+func (s *JobService) ListOpenJobPosts() ([]jobmodel.JobPost, error) {
+	var jobPosts []jobmodel.JobPost
+	err := s.DB.Where("status = ?", true).Find(&jobPosts).Error // true for open
+	return jobPosts, err
+}
+
+// Added: List only closed job posts
+func (s *JobService) ListClosedJobPosts() ([]jobmodel.JobPost, error) {
+	var jobPosts []jobmodel.JobPost
+	err := s.DB.Where("status = ?", false).Find(&jobPosts).Error // false for closed
+	return jobPosts, err
+}
+
+// CreateJobApplication handles job application creation and resume upload.
 func (s *JobService) CreateJobApplication(application *jobmodel.JobApplication, resumeFile []byte) (string, error) {
 	// 1. Generate unique file name.
 	uniqueID := uuid.New().String()
@@ -124,64 +187,6 @@ func (s *JobService) CreateJobApplication(application *jobmodel.JobApplication, 
 	}
 
 	return filePath, nil
-}
-
-func (s *JobService) GetJobPostByID(id uint) (*jobmodel.JobPost, error) {
-	var jobPost jobmodel.JobPost
-	err := s.DB.First(&jobPost, id).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, nil // Return nil, nil if not found
-	}
-	return &jobPost, err
-}
-
-func (s *JobService) UpdateJobPost(jobPost *jobmodel.JobPost) error {
-	result := s.DB.Model(jobPost).Updates(jobPost)
-	if result.Error != nil {
-		return result.Error
-	}
-	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound // Or a custom error indicating no update happened
-	}
-	return nil
-}
-
-func (s *JobService) DeleteJobPost(id uint) error {
-	result := s.DB.Delete(&jobmodel.JobPost{}, id)
-	if result.Error != nil {
-		return result.Error
-	}
-	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
-	}
-	return nil
-}
-
-func (s *JobService) ListJobPosts() ([]jobmodel.JobPost, error) {
-	var jobPosts []jobmodel.JobPost
-	err := s.DB.Find(&jobPosts).Error
-	return jobPosts, err
-}
-
-// ListJobPostsByCompanyID now filters by UserID (due to model change)
-func (s *JobService) ListJobPostsByCompanyID(userID uint) ([]jobmodel.JobPost, error) {
-	var jobPosts []jobmodel.JobPost
-	err := s.DB.Where("user_id = ?", userID).Find(&jobPosts).Error // Corrected to UserID
-	return jobPosts, err
-}
-
-// Added: List only open job posts
-func (s *JobService) ListOpenJobPosts() ([]jobmodel.JobPost, error) {
-	var jobPosts []jobmodel.JobPost
-	err := s.DB.Where("status = ?", true).Find(&jobPosts).Error // true for open
-	return jobPosts, err
-}
-
-// Added: List only closed job posts
-func (s *JobService) ListClosedJobPosts() ([]jobmodel.JobPost, error) {
-	var jobPosts []jobmodel.JobPost
-	err := s.DB.Where("status = ?", false).Find(&jobPosts).Error // false for closed
-	return jobPosts, err
 }
 
 func (s *JobService) GetJobApplicationByID(id uint) (*jobmodel.JobApplication, error) {
@@ -282,8 +287,4 @@ func (s *JobService) ListJobApplicationsWithFilter(status string, userID, jobID 
 
 	err := query.Find(&applications).Error
 	return applications, err
-}
-
-func (s *JobService) CreateJobPost(jobPost *jobmodel.JobPost) error {
-	return s.DB.Create(jobPost).Error
 }
