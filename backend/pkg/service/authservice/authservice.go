@@ -3,15 +3,21 @@ package authservice
 import (
 	"backend/pkg/model/authmodel"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt"
 	"gorm.io/gorm"
 )
 
+var (
+	ErrInvalidCredentials = errors.New("invalid credentials")
+	ErrUserNotFound       = errors.New("user not found")
+)
+
 type IAuthService interface {
 	Register(registerRequest *authmodel.RegisterRequest) error
-	Login(loginRequest *authmodel.LoginRequest) (string, error)
+	Login(email, password string) (string, *authmodel.User, error)
 }
 type AuthService struct {
 	DB *gorm.DB
@@ -44,33 +50,23 @@ func (s *AuthService) Register(registerRequest *authmodel.RegisterRequest) error
 	return nil
 }
 
-func (s *AuthService) Login(loginRequest *authmodel.LoginRequest) (string, error) {
+func (s *AuthService) Login(email, password string) (string, *authmodel.User, error) {
 	var user authmodel.User
-
-	// ค้นหาผู้ใช้จากฐานข้อมูลตามอีเมล
-	if err := s.DB.Where("email = ?", loginRequest.Email).First(&user).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			// ถ้าผู้ใช้ไม่พบ
-			return "", errors.New("user not found")
+	result := s.DB.Where("email = ?", email).First(&user) // Find the user by email
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return "", nil, ErrUserNotFound // Use named error
 		}
-		// ถ้ามีข้อผิดพลาดในการดึงข้อมูลจากฐานข้อมูล
-		return "", err
+		return "", nil, fmt.Errorf("failed to query user: %w", result.Error) // Wrap other errors
 	}
 
-	//เปรียบเทียบรหัสผ่านตอน Hash
-	// err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(request.Password))
-	// if err != nil {
-	// 	// ถ้ารหัสผ่านไม่ถูกต้อง
-	// 	return "", errors.New("invalid password")
-	// }
-
-	// สร้าง JWT token
-	token, err := generateJWTToken(&user)
+	// Generate JWT token with *all* user information.
+	token, err := generateJWTToken(&user) // Pass the entire user object
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
-	return token, nil
+	return token, &user, nil // Return token, user pointer, and error (which is nil on success)
 }
 
 // ฟังก์ชันสำหรับการสร้าง JWT Token
