@@ -34,6 +34,8 @@ type IJobService interface {
 	ListSavedJobs(userID uint) ([]jobmodel.SavedJob, error)
 	IsJobSaved(userID, jobID uint) (bool, error)
 	GetAllApplicants() ([]jobmodel.JobApplication, error)
+	ListJobPostsByUserID(userID uint) ([]jobmodel.JobPost, error)
+	CountApplicationsByJobID(jobID uint) (int64, error)
 }
 
 type JobService struct {
@@ -287,4 +289,17 @@ func (s *JobService) ListJobApplicationsWithFilter(status string, userID, jobID 
 
 	err := query.Find(&applications).Error
 	return applications, err
+}
+
+func (s *JobService) ListJobPostsByUserID(userID uint) ([]jobmodel.JobPost, error) {
+	var jobPosts []jobmodel.JobPost
+	err := s.DB.Preload("User").Where("user_id = ?", userID).Find(&jobPosts).Error // Preload and filter
+	return jobPosts, err
+}
+
+// CountApplicationsByJobID counts applications for a specific job.
+func (s *JobService) CountApplicationsByJobID(jobID uint) (int64, error) {
+	var count int64
+	err := s.DB.Model(&jobmodel.JobApplication{}).Where("job_id = ?", jobID).Count(&count).Error
+	return count, err
 }

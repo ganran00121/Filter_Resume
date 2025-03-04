@@ -23,6 +23,7 @@ func RegisterJobRoutes(app *fiber.App, jobHandler *jobhandler.JobHandler) {
 	// Job Post Routes
 	jobGroup.Post("/", jobHandler.CreateJobPost)                          // POST /api/jobs
 	jobGroup.Get("/:id", jobHandler.GetJobPost)                           // GET /api/jobs/:id
+	jobGroup.Get("/user/:userId", jobHandler.ListJobPostsByUserID)        // GET /api/jobs/user/:userId
 	jobGroup.Put("/:id", jobHandler.UpdateJobPost)                        // PUT /api/jobs/:id
 	jobGroup.Delete("/:id", jobHandler.DeleteJobPost)                     // DELETE /api/jobs/:id
 	jobGroup.Get("/", jobHandler.ListJobPosts)                            // GET /api/jobs

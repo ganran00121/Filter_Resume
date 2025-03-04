@@ -29,6 +29,7 @@ type IJobHandler interface {
 	ListJobApplicationsForJob(c *fiber.Ctx) error
 	ListJobApplicationsForUser(c *fiber.Ctx) error
 	ListJobApplications(c *fiber.Ctx) error
+	ListJobPostsByUserID(c *fiber.Ctx) error // New handler method
 
 	SaveJob(c *fiber.Ctx) error
 	UnsaveJob(c *fiber.Ctx) error
@@ -126,35 +127,43 @@ func (h *JobHandler) ListJobPosts(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to retrieve job posts"})
 	}
 
-	// Create a response structure that includes the company name.
+	// Create a response structure that includes the company name and applicant count.
 	type Response struct {
-		ID          uint    `json:"id"`
-		Title       string  `json:"title"`
-		Description string  `json:"description"`
-		Location    string  `json:"location"`
-		SalaryRange string  `json:"salary_range"`
-		JobPosition string  `json:"job_position"`
-		CompanyName *string `json:"company_name"` // Use a pointer to handle nil
-		Status      bool    `json:"status"`       // Add the Status field
-		Quantity    int     `json:"quantity"`
-		UserID      uint    `json:"user_id"`
+		ID             uint    `json:"id"`
+		Title          string  `json:"title"`
+		Description    string  `json:"description"`
+		Location       string  `json:"location"`
+		SalaryRange    string  `json:"salary_range"`
+		JobPosition    string  `json:"job_position"`
+		CompanyName    *string `json:"company_name"` // Use a pointer to handle nil
+		Status         bool    `json:"status"`       // Add the Status field
+		Quantity       int     `json:"quantity"`
+		ApplicantCount int64   `json:"applicant_count"` // Add applicant count
+		UserID         uint    `json:"user_id"`
 	}
 
 	responseList := make([]Response, 0, len(jobPosts))
 	for _, jobPost := range jobPosts {
-		responseItem := Response{
-			ID:          jobPost.ID,
-			Title:       jobPost.Title,
-			Description: jobPost.Description,
-			Location:    jobPost.Location,
-			SalaryRange: jobPost.SalaryRange,
-			JobPosition: jobPost.JobPosition,
-			CompanyName: jobPost.User.CompanyName, // Access directly. GORM handles nil.
-			Status:      jobPost.Status,           // Include Status
-			Quantity:    jobPost.Quantity,
-			UserID:      jobPost.UserID,
+		// Get the applicant count for EACH job post.
+		count, err := h.JobService.CountApplicationsByJobID(jobPost.ID)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to retrieve applicant count"})
 		}
-		responseList = append(responseList, responseItem)
+
+		// CORRECTED:  Use direct access (Option 1 - Recommended)
+		responseList = append(responseList, Response{
+			ID:             jobPost.ID,
+			Title:          jobPost.Title,
+			Description:    jobPost.Description,
+			Location:       jobPost.Location,
+			SalaryRange:    jobPost.SalaryRange,
+			JobPosition:    jobPost.JobPosition,
+			CompanyName:    jobPost.User.CompanyName, // Direct access
+			Status:         jobPost.Status,           // Include Status
+			Quantity:       jobPost.Quantity,
+			ApplicantCount: count, // Add the count
+			UserID:         jobPost.UserID,
+		})
 	}
 
 	return c.Status(fiber.StatusOK).JSON(responseList)
@@ -449,4 +458,56 @@ func (h *JobHandler) ListJobApplications(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(applications)
+}
+
+// ListJobPostsByUserID handles GET /api/jobs/user/:userId, and now includes applicant count
+func (h *JobHandler) ListJobPostsByUserID(c *fiber.Ctx) error {
+	userID, err := strconv.ParseUint(c.Params("userId"), 10, 64)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid user ID"})
+	}
+
+	jobPosts, err := h.JobService.ListJobPostsByUserID(uint(userID)) // Call the service
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to retrieve job posts"})
+	}
+
+	// Create a response structure that includes the company name and applicant count.
+	type Response struct {
+		ID             uint    `json:"id"`
+		Title          string  `json:"title"`
+		Description    string  `json:"description"`
+		Location       string  `json:"location"`
+		SalaryRange    string  `json:"salary_range"`
+		JobPosition    string  `json:"job_position"`
+		CompanyName    *string `json:"company_name"` // Use a pointer to handle nil
+		Status         bool    `json:"status"`       // Add the Status field
+		Quantity       int     `json:"quantity"`
+		ApplicantCount int64   `json:"applicant_count"` // Add applicant count
+		UserID         uint    `json:"user_id"`
+	}
+
+	responseList := make([]Response, 0, len(jobPosts))
+	for _, jobPost := range jobPosts {
+		// Get the applicant count for EACH job post.
+		count, err := h.JobService.CountApplicationsByJobID(jobPost.ID)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to retrieve applicant count"})
+		}
+
+		responseList = append(responseList, Response{
+			ID:             jobPost.ID,
+			Title:          jobPost.Title,
+			Description:    jobPost.Description,
+			Location:       jobPost.Location,
+			SalaryRange:    jobPost.SalaryRange,
+			JobPosition:    jobPost.JobPosition,
+			CompanyName:    jobPost.User.CompanyName, // Direct Access
+			Status:         jobPost.Status,
+			Quantity:       jobPost.Quantity,
+			ApplicantCount: count,
+			UserID:         jobPost.UserID,
+		})
+	}
+	return c.Status(fiber.StatusOK).JSON(responseList)
 }

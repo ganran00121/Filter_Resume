@@ -24,18 +24,20 @@ type SavedJob struct {
 }
 
 type JobPost struct {
-	ID          uint           `gorm:"primaryKey"`
-	UserID      uint           `gorm:"not null"`          // Foreign key referencing Users
-	User        authmodel.User `gorm:"foreignKey:UserID"` // Add this line for the relationship
-	Title       string         `gorm:"not null"`
-	Description string         `gorm:"type:text"` // Use 'text' for longer descriptions
-	Location    string
-	SalaryRange string
-	Quantity    int
-	JobPosition string
-	Status      bool `gorm:"default:true"` // Use boolean; true for open, false for closed
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID             uint           `gorm:"primaryKey"`
+	UserID         uint           `gorm:"not null"`          // Foreign key referencing Users
+	User           authmodel.User `gorm:"foreignKey:UserID"` // Add this line for the relationship
+	Title          string         `gorm:"not null"`
+	Description    string         `gorm:"type:text"` // Use 'text' for longer descriptions
+	Location       string
+	SalaryRange    string
+	Quantity       int
+	JobPosition    string
+	Status         bool `gorm:"default:true"` // Use boolean; true for open, false for closed
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	ApplicantCount int              `gorm:"default:0"`        // Add this line
+	Applications   []JobApplication `gorm:"foreignKey:JobID"` // Add this line to define the relationship
 }
 
 type JobApplication struct {
