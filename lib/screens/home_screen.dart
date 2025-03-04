@@ -292,10 +292,16 @@ class JobCard extends StatelessWidget {
   }
 }
 
-class JobDetailScreen extends StatelessWidget {
+class JobDetailScreen extends StatefulWidget {
   final Job job;
-
   JobDetailScreen({required this.job});
+
+  @override
+  _JobDetailScreenState createState() => _JobDetailScreenState();
+}
+
+class _JobDetailScreenState extends State<JobDetailScreen> {
+
 
   @override
   Widget build(BuildContext context) {
@@ -349,7 +355,7 @@ class JobDetailScreen extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            job.title,
+                            widget.job.title,
                             style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
@@ -375,7 +381,7 @@ class JobDetailScreen extends StatelessWidget {
                     ),
                     SizedBox(height: 8),
                     Text(
-                      job.title,
+                      widget.job.title,
                       style: TextStyle(
                         fontSize: 16,
                         color: Colors.grey,
@@ -387,7 +393,7 @@ class JobDetailScreen extends StatelessWidget {
                         Icon(Icons.location_on, size: 18, color: Colors.orange),
                         SizedBox(width: 4),
                         Text(
-                          job.location,
+                          widget.job.location,
                           style: TextStyle(fontSize: 16),
                         ),
                       ],
@@ -399,7 +405,7 @@ class JobDetailScreen extends StatelessWidget {
                             size: 18, color: Colors.orange),
                         SizedBox(width: 4),
                         Text(
-                          job.salaryRange,
+                          widget.job.salaryRange,
                           style: TextStyle(fontSize: 16),
                         ),
                       ],
@@ -410,7 +416,7 @@ class JobDetailScreen extends StatelessWidget {
                         Icon(Icons.people, size: 18, color: Colors.orange),
                         SizedBox(width: 4),
                         Text(
-                          job.quantity.toString(),
+                          widget.job.quantity.toString(),
                           style: TextStyle(fontSize: 16),
                         ),
                       ],
@@ -421,7 +427,7 @@ class JobDetailScreen extends StatelessWidget {
                         Icon(Icons.work, size: 18, color: Colors.orange),
                         SizedBox(width: 4),
                         Text(
-                          job.jobPosition,
+                          widget.job.jobPosition,
                           style: TextStyle(fontSize: 16),
                         ),
                       ],
@@ -446,9 +452,13 @@ class JobDetailScreen extends StatelessWidget {
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) =>
-                                      UploadResumeScreen(job.id),
+                                      UploadResumeScreen( widget.job.id),
                                 ),
-                              );
+                              ).then((result) {
+                                if (result == 'success') {
+                                  setState(() { });
+                                }
+                              });
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.orange,
@@ -487,7 +497,7 @@ class JobDetailScreen extends StatelessWidget {
                     ),
                     SizedBox(height: 16),
                     Text(
-                      job.description,
+                      widget.job.description,
                       style: TextStyle(
                         fontSize: 16,
                         color: Colors.grey,
@@ -565,6 +575,7 @@ class _UploadResumeScreenState extends State<UploadResumeScreen> {
       isLoading = false;
       if (response.statusCode == 200 || response.statusCode == 201) {
         uploadStatusMessage = "✅ อัปโหลดสำเร็จ!";
+        Navigator.pop(this.context, "success");
         
       } else {
         uploadStatusMessage = "❌ อัปโหลดไม่สำเร็จ (${response.statusCode})";
