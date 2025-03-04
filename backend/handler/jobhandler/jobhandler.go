@@ -364,7 +364,7 @@ func (h *JobHandler) SaveJob(c *fiber.Ctx) error {
 	}
 	jobID, err := strconv.ParseUint(c.Params("jobId"), 10, 64)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid job ID5"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid job ID"})
 	}
 
 	if err := h.JobService.SaveJob(uint(userID), uint(jobID)); err != nil {

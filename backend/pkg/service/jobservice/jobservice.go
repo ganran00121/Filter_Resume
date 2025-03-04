@@ -163,23 +163,38 @@ func (s *JobService) CreateJobApplication(application *jobmodel.JobApplication, 
 
 	}
 
+	// Get the JobPost to access the description.  IMPORTANT.
+	jobPost, err := s.GetJobPostByID(application.JobID)
+	if err != nil {
+		tx.Rollback()
+		os.Remove(filePath)
+		return "", fmt.Errorf("failed to get job post: %w", err)
+	}
+	if jobPost == nil {
+		tx.Rollback()
+		os.Remove(filePath)
+		return "", fmt.Errorf("job post with id %d not found", application.JobID)
+	}
+
 	// 7. Process with Gemini.
-	generatedText, err := s.GeminiService.GenerateContent(extractedText)
+	// Pass BOTH the job description and resume text to Gemini.
+	generatedText, score, err := s.GeminiService.GenerateContent(jobPost.Description, extractedText)
 	if err != nil {
 		//Don't rollback here. Log the error, and continue without Gemini
 		fmt.Printf("Gemini API call failed: %v\n", err)
 
-	} else {
-		// 8.  Store response in JobApplication
-		// *Important*: We're updating the *existing* application object
-		// that's already in the database (within the transaction).
-		application.GeminiSummary = generatedText
-		if err := tx.Save(application).Error; err != nil { // Use tx.Save, not tx.Create
-			tx.Rollback() // Rollback if saving the summary fails
-			os.Remove(filePath)
-			return "", fmt.Errorf("failed to save Gemini summary: %w", err)
-		}
+	} else { // Only save if Gemini call is successful
+		// 8.  Store response and score in JobApplication.
 
+		application.GeminiSummary = generatedText // Save the summary
+		if score != nil {
+			application.Score = score // Save the score
+		}
+		if err := tx.Save(application).Error; err != nil {
+			tx.Rollback()
+			os.Remove(filePath)
+			return "", fmt.Errorf("failed to save Gemini data: %w", err)
+		}
 	}
 
 	// --- Transaction Commit ---

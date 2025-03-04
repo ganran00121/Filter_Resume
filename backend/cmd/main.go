@@ -52,6 +52,7 @@ func main() {
 		log.Println("Tables do not exist. Running AutoMigrate...")
 		err = db.AutoMigrate(
 			&authmodel.User{},
+			&authmodel.CompanyProfile{},
 			&authmodel.Message{},
 			&authmodel.Notification{},
 			&jobmodel.JobPost{},
