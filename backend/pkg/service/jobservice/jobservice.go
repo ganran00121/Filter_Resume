@@ -53,7 +53,7 @@ func (s *JobService) CreateJobPost(jobPost *jobmodel.JobPost) error {
 
 func (s *JobService) GetJobPostByID(id uint) (*jobmodel.JobPost, error) {
 	var jobPost jobmodel.JobPost
-	err := s.DB.First(&jobPost, id).Error
+	err := s.DB.Preload("User").First(&jobPost, id).Error //  <---  CRITICAL CHANGE: Preload("User")
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil // Return nil, nil if not found
 	}
