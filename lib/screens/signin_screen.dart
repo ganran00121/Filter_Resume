@@ -67,11 +67,16 @@ class _SigninScreenState extends State<SigninScreen> {
       // Login successful
       final Map<String, dynamic> data = jsonDecode(response.body);
       final String token = data['token'];
+      final Map<String, dynamic> user = data['user'];
+
+      final String userJson = jsonEncode(user);
 
       // Store the token securely
       await _storage.write(key: 'auth_token', value: token);
+      await _storage.write(key: 'user_data', value: userJson);
       String? storedToken = await _storage.read(key: 'auth_token'); // เรียก token
       print("login successful - token : $storedToken");
+
 
       print('API Response: ${response.body}');
 

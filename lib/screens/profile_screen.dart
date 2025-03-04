@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import './signin_screen.dart';
 
+final _storage = FlutterSecureStorage();
 class ProfileScreen extends StatefulWidget {
   @override
   _ProfileScreenState createState() => _ProfileScreenState();
@@ -21,6 +24,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _isEdited = false;
+  }
+  void logout() async {
+    await _storage.deleteAll();
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => SigninScreen()),
+          (route) => false,
+    );
   }
 
   @override
@@ -112,6 +123,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ],
                     ),
                   ),
+                  const SizedBox(height: 20,),
+                  Center(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        logout(); // ฟังก์ชันที่ใช้ในการออกจากระบบ
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: const Text('Logout', style: TextStyle(color: Colors.white)),
+                    ),
+                  )
                 ],
               ),
             ),

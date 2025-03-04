@@ -3,6 +3,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 
 class CompanyScreen extends StatefulWidget {
@@ -10,12 +11,13 @@ class CompanyScreen extends StatefulWidget {
   _CompanyScreenState createState() => _CompanyScreenState();
 }
 
+final FlutterSecureStorage _storage = FlutterSecureStorage();
 final TextEditingController _title = TextEditingController();
 final TextEditingController _location = TextEditingController();
 final TextEditingController _salary = TextEditingController();
 final TextEditingController _people = TextEditingController();
 final TextEditingController _position = TextEditingController();
-final TextEditingController _test = TextEditingController();
+final TextEditingController _description = TextEditingController();
 
 final quill.QuillController _controller = quill.QuillController.basic();
 
@@ -33,6 +35,19 @@ class _CompanyScreenState extends State<CompanyScreen> {
     print('FetchData');
     String baseUrl = dotenv.env['BASE_URL'] ?? 'default_url';
     print('API baseUrl: ${baseUrl}');
+    int? id;
+
+    String? token = await _storage.read(key: 'auth_token');
+    String? userData = await _storage.read(key: 'user_data');
+    print("userData : $userData");
+
+    if (userData != null){
+      Map<String, dynamic> userMap = json.decode(userData);
+      id = userMap['id'];
+      print(id);
+    } else {
+      print('No user data found.');
+    }
 
     if (!baseUrl.startsWith('http')) {
       baseUrl = 'https://$baseUrl';
@@ -40,15 +55,24 @@ class _CompanyScreenState extends State<CompanyScreen> {
 
     Uri apiUri = Uri.parse(baseUrl).replace(path: '${Uri
         .parse(baseUrl)
-        .path}/api/jobs'); //
+        .path}/api/jobs/user/$id'); //
     print("URL : ${apiUri}");
     // ยิง API
     try {
-      var response = await http.get(apiUri);
+      var response = await http.get(apiUri,
+          headers: {
+            'Authorization': 'Bearer ${token}',
+            'Content-Type': 'application/json',
+          }
+      );
 
       if (response.statusCode == 200) {
         // Decode the JSON response
         List<dynamic> jsonData = json.decode(response.body);
+
+        print('Json data : $jsonData');
+
+
 
         List<Job> fetchedJobs = jsonData.map((data) => Job.fromJson(data)).toList();
         // Update the TextEditingController with the job title or any other field
@@ -72,6 +96,8 @@ class _CompanyScreenState extends State<CompanyScreen> {
       return null;
     }
   }
+
+
 
   final List<Company> companies = [
     Company(
@@ -190,7 +216,7 @@ class Job {
   final int quantity;
   final String jobPosition;
   final bool status;
-  final String applicant_count;
+  final int applicant_count;
   final String createdAt;
   final String updatedAt;
 
@@ -372,7 +398,7 @@ class JobCard extends StatelessWidget {
                           children: [
                             Text("จำนวนคนสมัคร :"),
                             SizedBox(width: 8),
-                            Text(job.applicant_count),
+                            Text(''),
                           ],
                         ),
                       ),
@@ -480,8 +506,59 @@ class JobDetail extends StatelessWidget {
   final Job job;
   JobDetail({required this.job});
 
+  Future<void> updateJob(int jobId, Job updatedJob) async {
+    String baseUrl = dotenv.env['BASE_URL'] ?? 'default_url';
+
+    if (!baseUrl.startsWith('http')) {
+      baseUrl = 'https://$baseUrl';
+    }
+
+    Uri apiUri = Uri.parse("$baseUrl/api/jobs/$jobId");
+
+    String? token = await _storage.read(key: 'auth_token');
+
+    try {
+      var response = await http.put(
+        apiUri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          "title": updatedJob.title,
+          "description": updatedJob.description,
+          "location": updatedJob.location,
+          "salary_range": updatedJob.salaryRange,
+          "job_position": updatedJob.jobPosition,
+          "company_name": updatedJob.company,
+          "status": updatedJob.status,
+          "quantity": updatedJob.quantity,
+          "applicant_count": updatedJob.applicant_count,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        print('Job updated successfully!');
+      } else {
+        print('Failed to update job. Status code: ${response.statusCode}');
+        print('Response: ${response.body}');
+      }
+    } catch (e) {
+      print('Error updating job: $e');
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
+
+    _title.text = job.title;
+    _location.text = job.location;
+    _salary.text = job.salaryRange;
+    _people.text = job.quantity.toString();
+    _position.text = job.jobPosition;
+    _description.text = job.description;
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -730,7 +807,7 @@ class JobDetail extends StatelessWidget {
                           ),
                           SizedBox(height: 8),
                           TextField(
-                            controller: _test,
+                            controller: _description,
                             maxLines: null, // Allow multiline
                             style: TextStyle(fontSize: 16, color: Colors.black87),
                             decoration: InputDecoration(
@@ -740,6 +817,27 @@ class JobDetail extends StatelessWidget {
                           ),
                         ],
                       ),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        Job updatedJob = Job(
+                          id: job.id,
+                          title: _title.text,
+                          description: _description.text,
+                          location: _location.text,
+                          salaryRange: _salary.text,
+                          jobPosition: _position.text,
+                          company: job.company,
+                          status: job.status,
+                          quantity: int.tryParse(_people.text) ?? job.quantity,
+                          applicant_count: job.applicant_count,
+                          createdAt: job.createdAt,
+                          updatedAt: DateTime.now().toString(),
+                        );
+
+                        updateJob(job.id, updatedJob);
+                      },
+                      child: Text("Save Changes"),
                     ),
                   ],
                 ),
