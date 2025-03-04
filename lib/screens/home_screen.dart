@@ -3,8 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path/path.dart';
 import 'dart:convert';
+
+final _storage = FlutterSecureStorage();
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -46,10 +49,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     Uri apiUri = Uri.parse('$baseUrl/api/jobs');
 
     try {
-      var response = await http.get(apiUri);
+      String? token = await _storage.read(key: 'auth_token');
+
+      var response = await http.get(
+        apiUri,
+        headers: {
+          'Authorization': token != null ? 'Bearer $token' : '',
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+      );
       if (response.statusCode == 200) {
         List<dynamic> jsonData = json.decode(response.body);
-        List<Job> fetchedJobs = jsonData.map((data) => Job.fromJson(data)).toList();
+        List<Job> fetchedJobs =
+            jsonData.map((data) => Job.fromJson(data)).toList();
 
         setState(() {
           jobs = fetchedJobs;
@@ -88,12 +100,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
               SizedBox(height: 15),
               Expanded(
-                child: ListView.builder(
-                  itemCount: jobs.length,
-                  itemBuilder: (context, index) {
-                    return JobCard(job: jobs[index]);
-                  },
-                ),
+                child: isLoading
+                    ? Center(
+                        child:
+                            CircularProgressIndicator()) // แสดงตัวหมุนเมื่อโหลด
+                    : ListView.builder(
+                        itemCount: jobs.length,
+                        itemBuilder: (context, index) {
+                          return JobCard(job: jobs[index]);
+                        },
+                      ),
               ),
             ],
           ),
@@ -130,19 +146,18 @@ class Job {
 
   factory Job.fromJson(Map<String, dynamic> json) {
     return Job(
-      id: json['id'] ?? 0,  // แก้จาก 'ID' เป็น 'id' และใช้ ?? 0 กัน null
+      id: json['id'] ?? 0, // แก้จาก 'ID' เป็น 'id' และใช้ ?? 0 กัน null
       title: json['title'] ?? '',
       description: json['description'] ?? '',
       location: json['location'] ?? '',
       salaryRange: json['salary_range'] ?? '',
-      quantity: json['quantity'] ?? 0,  // ใช้ ?? 0 กัน null
+      quantity: json['quantity'] ?? 0, // ใช้ ?? 0 กัน null
       jobPosition: json['job_position'] ?? '',
-      status: json['status'] ?? false,  // ถ้า null ให้เป็น false
+      status: json['status'] ?? false, // ถ้า null ให้เป็น false
       createdAt: json['created_at'] ?? '',
       updatedAt: json['updated_at'] ?? '',
     );
   }
-
 }
 
 class JobCard extends StatelessWidget {
@@ -209,38 +224,32 @@ class JobCard extends StatelessWidget {
                     SizedBox(height: 8),
                     Row(
                       children: [
-                        Expanded(child: _buildInfo(Icons.location_on, job.location)),
+                        Expanded(
+                            child: _buildInfo(Icons.location_on, job.location)),
                       ],
                     ),
                     SizedBox(height: 8), // เพิ่มระยะห่างระหว่างบรรทัด
                     Row(
                       children: [
-                        Expanded(child: _buildInfo(Icons.attach_money, job.salaryRange)),
+                        Expanded(
+                            child: _buildInfo(
+                                Icons.attach_money, job.salaryRange)),
                       ],
                     ),
                     Row(
                       children: [
-
-                        Expanded(child: _buildInfo(Icons.people, job.quantity.toString())),
-
+                        Expanded(
+                            child: _buildInfo(
+                                Icons.people, job.quantity.toString())),
                       ],
                     ),
                     SizedBox(height: 8), // เพิ่มระยะห่างระหว่างบรรทัด
                     Row(
                       children: [
-                        Expanded(child: _buildInfo(Icons.work, job.jobPosition)),
+                        Expanded(
+                            child: _buildInfo(Icons.work, job.jobPosition)),
                       ],
                     ),
-                    // Wrap(
-                    //   spacing: 8,
-                    //   runSpacing: 4,
-                    //   children: [
-                    //     _buildInfo(Icons.location_on, job.location),
-                    //     _buildInfo(Icons.attach_money, job.salaryRange),
-                    //     _buildInfo(Icons.people, job.quantity.toString()),
-                    //     _buildInfo(Icons.work, job.jobPosition),
-                    //   ],
-                    // ),
                   ],
                 ),
               ),
@@ -293,8 +302,7 @@ class JobDetailScreen extends StatelessWidget {
         backgroundColor: Colors.transparent, // เปลี่ยนสีพื้นหลังเป็นโปร่งใส
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios,
-              color: Colors.white),
+          icon: Icon(Icons.arrow_back_ios, color: Colors.white),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -431,9 +439,12 @@ class JobDetailScreen extends StatelessWidget {
                         children: [
                           ElevatedButton(
                             onPressed: () {
-                              showDialog(
-                                context: context,
-                                builder: (context) => UploadResumeScreen(job.id),
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      UploadResumeScreen(job.id),
+                                ),
                               );
                             },
                             style: ElevatedButton.styleFrom(
@@ -460,15 +471,12 @@ class JobDetailScreen extends StatelessWidget {
                               textStyle: TextStyle(fontSize: 16),
                               shape: RoundedRectangleBorder(
                                 // เพิ่ม shape
-                                borderRadius:
-                                    BorderRadius.circular(8.0),
+                                borderRadius: BorderRadius.circular(8.0),
                               ),
                             ),
                             child: Text(
                               "บันทึก",
-                              style: TextStyle(
-                                  color: Color(
-                                      0xFF0065FF)),
+                              style: TextStyle(color: Color(0xFF0065FF)),
                             ),
                           ),
                         ],
@@ -482,43 +490,6 @@ class JobDetailScreen extends StatelessWidget {
                         color: Colors.grey,
                       ),
                     ),
-                    // Text(
-                    //   "Job Description",
-                    //   style: TextStyle(
-                    //     fontSize: 18,
-                    //     fontWeight: FontWeight.bold,
-                    //   ),
-                    // ),
-                    // SizedBox(height: 8),
-                    // Text(
-                    //   "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.",
-                    //   style: TextStyle(fontSize: 16),
-                    // ),
-                    // SizedBox(height: 16),
-                    // Text(
-                    //   "Requirements",
-                    //   style: TextStyle(
-                    //     fontSize: 18,
-                    //     fontWeight: FontWeight.bold,
-                    //   ),
-                    // ),
-                    // SizedBox(height: 8),
-                    // Text(
-                    //   "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.",
-                    //   style: TextStyle(fontSize: 16),
-                    // ),
-                    // Text(
-                    //   "Additional",
-                    //   style: TextStyle(
-                    //     fontSize: 18,
-                    //     fontWeight: FontWeight.bold,
-                    //   ),
-                    // ),
-                    // SizedBox(height: 8),
-                    // Text(
-                    //   "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.",
-                    //   style: TextStyle(fontSize: 16),
-                    // ),
                   ],
                 ),
               ),
@@ -540,8 +511,10 @@ class UploadResumeScreen extends StatefulWidget {
 }
 
 class _UploadResumeScreenState extends State<UploadResumeScreen> {
+  bool isLoading = false;
   File? selectedFile;
   String? fileName;
+  String? uploadStatusMessage;
 
   Future<void> pickFile() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -560,11 +533,21 @@ class _UploadResumeScreenState extends State<UploadResumeScreen> {
   Future<void> uploadFile() async {
     if (selectedFile == null) return;
 
+    setState(() {
+      isLoading = true; // เริ่มโหลด
+    });
+
     String baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:3000';
-    String url = "$baseUrl/api/jobs/${widget.jobId}/apply"; // ใช้ jobId ที่รับมา
+    String url =
+        "$baseUrl/api/jobs/${widget.jobId}/apply"; // ใช้ jobId ที่รับมา
+
+    String? token = await _storage.read(key: 'auth_token');
 
     var uri = Uri.parse(url);
     var request = http.MultipartRequest("POST", uri)
+      ..headers['Authorization'] =
+          'Bearer $token' // เพิ่ม Token เข้าไปใน Header
+      ..headers['Content-Type'] = 'multipart/form-data' // กำหนด Content-Type
       ..files.add(await http.MultipartFile.fromPath(
         'resume',
         selectedFile!.path,
@@ -572,14 +555,22 @@ class _UploadResumeScreenState extends State<UploadResumeScreen> {
 
     var response = await request.send();
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      print("อัปโหลดสำเร็จ!");
+    // setState(() {
+    //   isLoading = false; // หยุดโหลดเมื่ออัปโหลดเสร็จ
+    // });
 
-    } else {
-      print("อัปโหลดไม่สำเร็จ: ${response.statusCode}");
-    }
+    if (!mounted) return; // ตรวจสอบว่าหน้ายังเปิดอยู่ก่อน
+
+    setState(() {
+      isLoading = false;
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        uploadStatusMessage = "✅ อัปโหลดสำเร็จ!";
+        
+      } else {
+        uploadStatusMessage = "❌ อัปโหลดไม่สำเร็จ (${response.statusCode})";
+      }
+    });
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -594,12 +585,16 @@ class _UploadResumeScreenState extends State<UploadResumeScreen> {
         backgroundColor: Colors.white,
         iconTheme: IconThemeData(color: Colors.black),
       ),
-      body: Center( // ทำให้ UI อยู่ตรงกลาง
+      body: Container(
+      color: Colors.white,
+        child: Center(
         child: Padding(
           padding: const EdgeInsets.all(20.0),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center, // จัดให้อยู่ตรงกลางแนวตั้ง
-            crossAxisAlignment: CrossAxisAlignment.center, // จัดให้อยู่ตรงกลางแนวนอน
+            mainAxisAlignment:
+                MainAxisAlignment.center, // จัดให้อยู่ตรงกลางแนวตั้ง
+            crossAxisAlignment:
+                CrossAxisAlignment.center, // จัดให้อยู่ตรงกลางแนวนอน
             children: [
               Text(
                 "Upload file Resume",
@@ -619,12 +614,14 @@ class _UploadResumeScreenState extends State<UploadResumeScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.upload_file, size: 40, color: Colors.grey[700]),
+                        Icon(Icons.upload_file,
+                            size: 40, color: Colors.grey[700]),
                         SizedBox(height: 10),
                         Text(
                           fileName ?? "Upload file\n(รองรับเฉพาะ PDF)",
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+                          style:
+                              TextStyle(fontSize: 16, color: Colors.grey[700]),
                         ),
                       ],
                     ),
@@ -633,7 +630,8 @@ class _UploadResumeScreenState extends State<UploadResumeScreen> {
               ),
               SizedBox(height: 30),
               ElevatedButton(
-                onPressed: selectedFile != null ? uploadFile : null,
+                onPressed:
+                    selectedFile != null && !isLoading ? uploadFile : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.orange,
                   padding: EdgeInsets.symmetric(vertical: 14),
@@ -642,14 +640,29 @@ class _UploadResumeScreenState extends State<UploadResumeScreen> {
                   ),
                   minimumSize: Size(double.infinity, 50),
                 ),
-                child: Text(
-                  "Submit",
-                  style: TextStyle(fontSize: 16, color: Colors.white),
-                ),
+                child: isLoading
+                    ? CircularProgressIndicator(color: Colors.white)
+                    : Text(
+                        "Submit",
+                        style: TextStyle(fontSize: 16, color: Colors.white),
+                      ),
               ),
+              if (uploadStatusMessage != null) ...[
+                SizedBox(height: 20),
+                Text(
+                  uploadStatusMessage!,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: uploadStatusMessage!.contains("✅")
+                        ? Colors.green
+                        : Colors.red,
+                  ),
+                ),
+              ],
             ],
           ),
         ),
+      ),
       ),
     );
   }
