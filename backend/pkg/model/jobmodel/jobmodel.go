@@ -53,9 +53,10 @@ type JobApplication struct {
 	Status        JobApplicationStatus `gorm:"type:varchar(20);default:'pending'"` // Use custom type
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
-	GeminiSummary string   `gorm:"type:text"`
-	Questions     *string  `gorm:"type:text"`
-	Score         *float64 `gorm:"type:double"`
+	DeletedAt     gorm.DeletedAt `gorm:"index"`
+	GeminiSummary string         `gorm:"type:text"`
+	Questions     *string        `gorm:"type:text"`
+	Score         *float64       `gorm:"type:double"`
 }
 
 type Message struct {

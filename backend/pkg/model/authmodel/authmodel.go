@@ -2,6 +2,8 @@ package authmodel
 
 import (
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type User struct {
@@ -42,19 +44,24 @@ type CompanyProfile struct {
 
 type Message struct {
 	ID          uint   `gorm:"primaryKey"`
-	SenderID    uint   `gorm:"not null"`
-	ReceiverID  uint   `gorm:"not null"`
-	MessageText string `gorm:"type:longtext;not null"`
+	SenderID    uint   `gorm:"not null"` // Foreign key referencing Users
+	ReceiverID  uint   `gorm:"not null"` // Foreign key referencing Users
+	MessageText string `gorm:"type:text;not null"`
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+	DeletedAt   gorm.DeletedAt `gorm:"index"`
+	Sender      User           `gorm:"foreignKey:SenderID"`   // For preloading
+	Receiver    User           `gorm:"foreignKey:ReceiverID"` // For preloading
 }
-
-type Notification struct {
-	ID         uint   `gorm:"primaryKey"`
-	UserID     uint   `gorm:"not null"`
-	Message    string `gorm:"not null"`
-	ReadStatus bool   `gorm:"default:false"`
-	CreatedAt  time.Time
+type Notification struct { //Move form jobmodel to authmodel
+	ID        uint   `gorm:"primaryKey"`
+	UserID    uint   `gorm:"not null"`
+	Message   string `gorm:"not null"`
+	IsRead    bool   `gorm:"default:false"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt gorm.DeletedAt `gorm:"index"`
+	User      User           `gorm:"foreignKey:UserID"`
 }
 
 type FirebaseResponse struct {

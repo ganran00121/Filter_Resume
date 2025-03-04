@@ -3,6 +3,7 @@ package routes
 import (
 	"backend/handler/authhandler"
 	"backend/handler/jobhandler"
+	"backend/handler/messagehandler"
 	"backend/pkg/middleware"
 
 	"github.com/gofiber/fiber/v2"
@@ -50,8 +51,17 @@ func RegisterJobRoutes(app *fiber.App, jobHandler *jobhandler.JobHandler) {
 	jobGroup.Get("/user/:userId/saved/:jobId", jobHandler.CheckIfJobIsSaved) // GET /api/jobs/user/:userId/saved/:jobId
 }
 
+func RegisterMessageRoutes(app *fiber.App, messageHandler *messagehandler.MessageHandler) {
+	messageGroup := app.Group("/api/messages")
+	messageGroup.Use(middleware.AuthMiddleware)                        // Protect message routes
+	messageGroup.Post("/", messageHandler.SendMessage)                 // POST /api/messages
+	messageGroup.Get("/:userId", messageHandler.ViewMessages)          // GET /api/messages/:userId  (viewMessages)
+	messageGroup.Get("/message/:messageId", messageHandler.GetMessage) // GET /api/messages/message/:messageId
+}
+
 // RegisterRoutes sets up all routes for the application.  This is the function you call in main.go.
-func RegisterRoutes(app *fiber.App, authHandler *authhandler.AuthHandler, jobHandler *jobhandler.JobHandler) {
+func RegisterRoutes(app *fiber.App, authHandler *authhandler.AuthHandler, jobHandler *jobhandler.JobHandler, messageHandler *messagehandler.MessageHandler) {
 	RegisterAuthRoutes(app, authHandler)
 	RegisterJobRoutes(app, jobHandler)
+	RegisterMessageRoutes(app, messageHandler)
 }

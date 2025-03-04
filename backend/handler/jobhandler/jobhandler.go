@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
@@ -349,14 +350,53 @@ func (h *JobHandler) UpdateJobApplication(c *fiber.Ctx) error {
 func (h *JobHandler) ListJobApplicationsForJob(c *fiber.Ctx) error {
 	jobID, err := strconv.ParseUint(c.Params("jobId"), 10, 64)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid job ID2"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid job ID"})
 	}
 
 	applications, err := h.JobService.ListJobApplicationsByJobID(uint(jobID))
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to retrieve job applications"})
 	}
-	return c.Status(fiber.StatusOK).JSON(applications)
+
+	// OPTIONAL: Create a response struct for cleaner output.  This is HIGHLY recommended.
+	type ApplicationResponse struct {
+		ID             uint      `json:"id"`
+		JobID          uint      `json:"job_id"`
+		UserID         uint      `json:"user_id"`
+		ApplicantName  string    `json:"applicant_name"`  // Get from preloaded User
+		ApplicantEmail string    `json:"applicant_email"` // Get from preloaded User
+		ResumeFile     string    `json:"resume_file"`
+		Status         string    `json:"status"` // Use string for easier handling
+		CreatedAt      time.Time `json:"created_at"`
+		UpdatedAt      time.Time `json:"updated_at"`
+		GeminiSummary  string    `json:"gemini_summary,omitempty"`
+		Score          *float64  `json:"score,omitempty"`
+	}
+
+	responseList := make([]ApplicationResponse, 0, len(applications))
+	for _, app := range applications {
+		// Check for preloaded data and nil pointers safely.
+		if app.User.ID == 0 {
+			// Handle cases where the user isn't preloaded (shouldn't happen, but be defensive).
+			fmt.Println("Warning: User not preloaded for application:", app.ID) // Log a warning
+			continue                                                            // Or return an error, depending on how critical this is
+		}
+		responseList = append(responseList, ApplicationResponse{
+			ID:             app.ID,
+			JobID:          app.JobID,
+			UserID:         app.UserID,
+			ApplicantName:  app.User.Name,  // Get name from preloaded User
+			ApplicantEmail: app.User.Email, // Get email from preloaded User
+			ResumeFile:     app.ResumeFile,
+			Status:         string(app.Status), // Convert to string
+			CreatedAt:      app.CreatedAt,
+			UpdatedAt:      app.UpdatedAt,
+			GeminiSummary:  app.GeminiSummary,
+			Score:          app.Score,
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(responseList)
 }
 
 // ListJobApplicationsForUser handles GET /api/jobs/user/:userId/applications

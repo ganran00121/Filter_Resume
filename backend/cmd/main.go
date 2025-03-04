@@ -3,12 +3,14 @@ package main
 import (
 	"backend/handler/authhandler"
 	"backend/handler/jobhandler"
+	"backend/handler/messagehandler"
 	"backend/pkg/model/authmodel"
 	"backend/pkg/model/jobmodel"
 	"backend/pkg/pdfextractor"
 	"backend/pkg/service/authservice"
 	"backend/pkg/service/geminiservice"
 	"backend/pkg/service/jobservice"
+	"backend/pkg/service/messageservice"
 	"backend/routes"
 	"fmt"
 	"log"
@@ -77,12 +79,14 @@ func main() {
 	geminiEndpoint := "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="
 	geminiService := geminiservice.NewGeminiService(geminiAPIKey, geminiEndpoint) // Inject API Key
 	jobService := jobservice.NewJobService(db, pdfExtractor, geminiService)       // Inject PdfExtractor and GeminiService
+	messageService := messageservice.NewMessageService(db)
 
 	// Initialize handlers
 	authHandler := authhandler.NewAuthHandler(authService)
 	jobHandler := jobhandler.NewJobHandler(jobService)
+	messageHandler := messagehandler.NewMessageHandler(messageService)
 
-	routes.RegisterRoutes(app, authHandler, jobHandler)
+	routes.RegisterRoutes(app, authHandler, jobHandler, messageHandler)
 
 	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusOK)

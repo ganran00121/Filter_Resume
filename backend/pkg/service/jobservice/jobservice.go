@@ -59,6 +59,10 @@ const (
 	errDeleteJobPost   = "Failed to delete job post"
 )
 
+const (
+	SystemUserID = 1 // Replace with the actual ID of your system user.
+)
+
 func (s *JobService) CreateJobPost(jobPost *jobmodel.JobPost) error {
 	return s.DB.Create(jobPost).Error
 }
@@ -121,9 +125,10 @@ func (s *JobService) ListJobPosts() ([]jobmodel.JobPost, error) {
 }
 
 // ListJobPostsByCompanyID now filters by UserID (due to model change) and preloads User.
-func (s *JobService) ListJobPostsByCompanyID(userID uint) ([]jobmodel.JobPost, error) {
+func (s *JobService) ListJobPostsByCompanyID(companyID uint) ([]jobmodel.JobPost, error) {
 	var jobPosts []jobmodel.JobPost
-	err := s.DB.Preload("User").Where("user_id = ?", userID).Find(&jobPosts).Error // Preload and filter by UserID
+	// VERY IMPORTANT: Exclude soft-deleted records.
+	err := s.DB.Preload("User").Where("user_id = ? AND deleted_at IS NULL", companyID).Find(&jobPosts).Error // Preload User
 	return jobPosts, err
 }
 
@@ -143,94 +148,107 @@ func (s *JobService) ListClosedJobPosts() ([]jobmodel.JobPost, error) {
 
 // CreateJobApplication handles job application creation and resume upload.
 func (s *JobService) CreateJobApplication(application *jobmodel.JobApplication, resumeFile []byte) (string, error) {
-	// ... (Steps 1-6: File handling, initial application save - NO CHANGES HERE) ...
 	uniqueID := uuid.New().String()
 	fileName := uniqueID + ".pdf"
 	filePath := filepath.Join("uploads", "resumes", fileName)
 
-	// 2. Create directory.
+	// 1. Create directory.
 	err := os.MkdirAll(filepath.Dir(filePath), 0755)
 	if err != nil {
 		return "", fmt.Errorf("failed to create directory: %w", err)
 	}
 
-	// 3. Save resume file.
+	// 2. Save resume file.
 	err = os.WriteFile(filePath, resumeFile, 0644)
 	if err != nil {
 		return "", fmt.Errorf("failed to save resume file: %w", err)
 	}
 
-	// 4. Extract text from PDF.
+	// 3. Extract text from PDF.
 	extractedText, err := s.PdfExtractor.ExtractText(filePath)
 	if err != nil {
-		os.Remove(filePath) // Clean up on extraction failure.
+		os.Remove(filePath) // Clean up if extraction fails.
 		return "", fmt.Errorf("failed to extract text from PDF: %w", err)
 	}
 
-	// 5. Set file path.
+	// 4. Set file path.
 	application.ResumeFile = filePath
 
 	// --- Transaction Start ---
 	tx := s.DB.Begin()
 	if tx.Error != nil {
-		os.Remove(filePath)
+		os.Remove(filePath) // Clean up on transaction start failure
 		return "", fmt.Errorf("failed to begin database transaction: %w", tx.Error)
 	}
-	// Use defer for rollback in case of panic
 	defer func() {
 		if r := recover(); r != nil {
 			tx.Rollback()
+			os.Remove(filePath) // Clean up on panic
 		}
 	}()
 
-	// 6. Save application.
-	err = tx.Create(application).Error // Use tx, not s.DB
+	// 5. Save the initial application (before Gemini processing).
+	err = tx.Create(application).Error
 	if err != nil {
-		tx.Rollback()       // Rollback on application creation failure
-		os.Remove(filePath) // Clean up.
+		tx.Rollback()
+		os.Remove(filePath) // Clean up on database error
 		return "", fmt.Errorf("failed to save application: %w", err)
-
 	}
 
-	// Get the JobPost to access the description.  IMPORTANT.
-	jobPost, err := s.GetJobPostByID(application.JobID)
+	// 6. Get the JobPost (needed for the Gemini prompt).
+	jobPost, err := s.GetJobPostByID(application.JobID) // Use GetJobPostByID (soft-delete aware)
 	if err != nil {
 		tx.Rollback()
 		os.Remove(filePath)
 		return "", fmt.Errorf("failed to get job post: %w", err)
 	}
-	if jobPost == nil {
+	if jobPost == nil { // Handle case where GetJobPostByID returns nil, nil
 		tx.Rollback()
 		os.Remove(filePath)
 		return "", fmt.Errorf("job post with id %d not found", application.JobID)
 	}
 
-	// 7. Process with Gemini.
-	generatedText, score, questions, err := s.GeminiService.GenerateContent(jobPost.Description, extractedText) // Get summary, score, AND questions
+	// 7. Call Gemini (with job description and resume text).
+	summary, score, questions, err := s.GeminiService.GenerateContent(jobPost.Description, extractedText)
 	if err != nil {
-		// Log and continue (don't prevent application submission)
+		// Log and continue.  Don't prevent application submission on Gemini failure.
 		fmt.Printf("Gemini API call failed: %v\n", err)
-		generatedText = "Resume analysis with Gemini failed."
+		summary = "Resume analysis with Gemini failed." // Set a default summary
+		// We do NOT rollback here.  We still want the application to be saved.
 	}
 
-	// 8. Store response, score and questions in JobApplication.
-	application.GeminiSummary = generatedText
+	// 8. Store Gemini results in the JobApplication.
+	application.GeminiSummary = summary // Always store the summary
 	if score != nil {
-		application.Score = score
+		application.Score = score // Store score (if available)
 	}
 	if questions != nil {
-		application.Questions = questions // Save the questions
+		application.Questions = questions
 	}
 
 	if err := tx.Save(application).Error; err != nil {
 		tx.Rollback() // Rollback if saving to job application fails
 		os.Remove(filePath)
 		return "", fmt.Errorf("failed to save Gemini data: %w", err)
-
 	}
+	// 9. Create a Message with the QUESTIONS (if any).
+	if questions != nil && *questions != "" { // Check if questions are present
+		message := jobmodel.Message{
+			SenderID:    SystemUserID,       // Use the system user ID.
+			ReceiverID:  application.UserID, // Send to the applicant.
+			MessageText: *questions,         // Use the *questions* from Gemini.
+		}
+		if err := tx.Create(&message).Error; err != nil {
+			tx.Rollback() // Rollback if message creation fails
+			os.Remove(filePath)
+			return "", fmt.Errorf("failed to create message: %w", err)
+		}
+	}
+
 	// --- Transaction Commit ---
 	if err := tx.Commit().Error; err != nil {
-		os.Remove(filePath) //Clean up file
+		tx.Rollback()       // Rollback for any commit error
+		os.Remove(filePath) // Clean up
 		return "", fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
@@ -239,11 +257,18 @@ func (s *JobService) CreateJobApplication(application *jobmodel.JobApplication, 
 
 func (s *JobService) GetJobApplicationByID(id uint) (*jobmodel.JobApplication, error) {
 	var application jobmodel.JobApplication
-	err := s.DB.First(&application, id).Error
+	err := s.DB.
+		Preload("User").              // Preload the User (applicant)
+		Preload("JobPost").           // Preload the JobPost
+		Preload("JobPost.User").      // Preload the User of Job Post
+		First(&application, id).Error // Find the application by ID
+
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, nil
+		return nil, nil // Return nil, nil for not found
+	} else if err != nil {
+		return nil, fmt.Errorf("failed to retrieve job application: %w", err)
 	}
-	return &application, err
+	return &application, nil
 }
 
 func (s *JobService) UpdateJobApplication(application *jobmodel.JobApplication) error {
@@ -259,7 +284,11 @@ func (s *JobService) UpdateJobApplication(application *jobmodel.JobApplication) 
 
 func (s *JobService) ListJobApplicationsByJobID(jobID uint) ([]jobmodel.JobApplication, error) {
 	var applications []jobmodel.JobApplication
-	err := s.DB.Where("job_id = ?", jobID).Find(&applications).Error
+	err := s.DB.
+		Preload("User").                                   //  <-- CRITICAL: Preload the User (applicant)
+		Preload("JobPost").                                //  <-- Preload JobPost
+		Where("job_id = ? AND deleted_at IS NULL", jobID). // Filter by job_id and exclude soft-deleted
+		Find(&applications).Error
 	return applications, err
 }
 
@@ -360,7 +389,9 @@ func (s *JobService) ListJobApplicationsWithFilter(status string, userID, jobID 
 
 func (s *JobService) ListJobPostsByUserID(userID uint) ([]jobmodel.JobPost, error) {
 	var jobPosts []jobmodel.JobPost
-	err := s.DB.Preload("User").Where("user_id = ?", userID).Find(&jobPosts).Error // Preload and filter
+	err := s.DB.Preload("User").
+		Where("user_id = ? AND deleted_at IS NULL", userID). // Exclude soft-deleted job posts
+		Find(&jobPosts).Error
 	return jobPosts, err
 }
 

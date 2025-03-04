@@ -12,8 +12,9 @@ import (
 )
 
 // IGeminiService interface
+// Update the interface to return BOTH the text and the score.
 type IGeminiService interface {
-	GenerateContent(jobDescription, resumeText string) (string, *float64, *string, error) // Return summary, score, questions, and error
+	GenerateContent(jobDescription, resumeText string) (string, *float64, *string, error) // Returns text, score, questions, and error
 }
 
 // GeminiService struct
@@ -24,15 +25,17 @@ type GeminiService struct {
 
 // NewGeminiService creates a new GeminiService instance.
 func NewGeminiService(apiKey, apiEndpoint string) *GeminiService {
+	//Check API key
 	if apiKey == "" {
-		panic("GEMINI_API_KEY environment variable not set")
+		panic("GEMINI_API_KEY environment variable not set") //Panic if no API key.
 	}
 	return &GeminiService{apiKey: apiKey, apiEndpoint: apiEndpoint}
 }
 
+// GenerateContent interacts with the Gemini API and extracts both text and score.
 func (s *GeminiService) GenerateContent(jobDescription, resumeText string) (string, *float64, *string, error) {
 	endpoint := s.apiEndpoint + s.apiKey
-	// Modified prompt to ask for questions.  VERY IMPORTANT.
+	// Construct a prompt that asks for BOTH a summary AND a score.
 	prompt := fmt.Sprintf(`Job Description:
 %s
 
@@ -78,21 +81,23 @@ QUESTIONS: 1. The job description mentions experience with X, but your resume do
 		return "", nil, nil, fmt.Errorf("error decoding API response: %w", err)
 	}
 
-	// Extract the generated text, score, and questions.
+	// Extract the generated text and score. Handle potential errors robustly.
 	if candidates, ok := responseBody["candidates"].([]interface{}); ok && len(candidates) > 0 {
 		if candidate, ok := candidates[0].(map[string]interface{}); ok {
 			if content, ok := candidate["content"].(map[string]interface{}); ok {
 				if parts, ok := content["parts"].([]interface{}); ok && len(parts) > 0 {
 					if part, ok := parts[0].(map[string]interface{}); ok {
 						if textVal, ok := part["text"].(string); ok {
-							// --- Extract Score (as before) ---
+							// Text extraction successful, now try to get the score.
+
+							// Use a regular expression to find the score.  This is more robust.
 							reScore := regexp.MustCompile(`SCORE:\s*(\d+(\.\d+)?)`)
 							matchScore := reScore.FindStringSubmatch(textVal)
 							var score *float64
 							if len(matchScore) > 1 {
-								scoreVal, err := strconv.ParseFloat(matchScore[1], 64)
-								if err == nil {
-									score = &scoreVal
+								scoreVal, err := strconv.ParseFloat(matchScore[1], 64) //Parse string to float
+								if err == nil {                                        // if no error
+									score = &scoreVal // Use the address of scoreVal and assign to the pointer
 								}
 							}
 
@@ -117,6 +122,6 @@ QUESTIONS: 1. The job description mentions experience with X, but your resume do
 			}
 		}
 	}
-
+	// If NO score given, we just return the text
 	return "", nil, nil, fmt.Errorf("could not extract text from API response: %v", responseBody)
 }
