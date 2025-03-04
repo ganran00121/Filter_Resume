@@ -201,54 +201,44 @@ func (h *JobHandler) CreateJobApplication(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid job ID"})
 	}
 
-	// Get the user ID from the JWT token (assuming you have authentication middleware)
-	// This is a placeholder.  You MUST get the user ID from your authentication.
-	userID, err := getUserIDFromToken(c) // Replace with your actual auth logic
+	var application jobmodel.JobApplication
+	if err := c.BodyParser(&application); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
+	}
+
+	// Get the file from the request.
+	file, err := c.FormFile("resume") // "resume" is the name of the form field
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"}) // Or a better error
+		if err == http.ErrMissingFile {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Resume file is required"})
+		}
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Error retrieving file: " + err.Error()})
 	}
 
-	// Parse the multipart form
-	form, err := c.MultipartForm()
+	// Open the file.
+	src, err := file.Open()
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid form data"})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error opening file: " + err.Error()})
 	}
+	defer src.Close()
 
-	// --- Get resume file ---
-	files := form.File["resume"] // "resume" is the *name* of the file input field in your HTML form
-	if len(files) == 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "No resume file provided"})
-	}
-	file := files[0] // Get the first file (you can handle multiple files if needed)
-
-	// Open the file
-	resumeFile, err := file.Open()
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to open resume file"})
-	}
-	defer resumeFile.Close()
-
-	// Read the file content into a byte slice
+	// Read the file content into a byte slice.
 	buf := bytes.NewBuffer(nil)
-	if _, err := io.Copy(buf, resumeFile); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to read resume file"})
+	if _, err := io.Copy(buf, src); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error reading file: " + err.Error()})
 	}
 	fileBytes := buf.Bytes()
 
-	// Create the application object
-	application := jobmodel.JobApplication{
-		JobID:  uint(jobID),
-		UserID: userID,
-		Status: jobmodel.JobApplicationStatusPending, // Correctly using the constant
-	}
+	// Set the JobID from the URL parameter.  VERY IMPORTANT.
+	application.JobID = uint(jobID)
+	application.UserID = 1 //Temporary hardcode
 
-	// Call the service to create the application and save the file
 	filePath, err := h.JobService.CreateJobApplication(&application, fileBytes)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()}) // Return specific error
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create job application: " + err.Error()})
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "Application submitted successfully", "resume_file": filePath})
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "Application submitted successfully", "file_path": filePath})
 }
 
 // GetJobApplication handles GET /api/jobs/applications/:id
