@@ -21,11 +21,13 @@ final TextEditingController _position = TextEditingController();
 final TextEditingController _description = TextEditingController();
 int _count = 0;
 
+
 final quill.QuillController _controller = quill.QuillController.basic();
 
 class _CompanyScreenState extends State<CompanyScreen> {
   List<Job> jobs = [];
   bool isLoading = true;
+  String companyName = '';
 
   @override
   void initState() {
@@ -40,6 +42,7 @@ class _CompanyScreenState extends State<CompanyScreen> {
     print('API baseUrl: ${baseUrl}');
     int? id;
 
+
     String? token = await _storage.read(key: 'auth_token');
     String? userData = await _storage.read(key: 'user_data');
     print("userData : $userData");
@@ -47,7 +50,9 @@ class _CompanyScreenState extends State<CompanyScreen> {
     if (userData != null){
       Map<String, dynamic> userMap = json.decode(userData);
       id = userMap['id'];
+      companyName = userMap['company_name'];
       print(id);
+      print(companyName);
     } else {
       print('No user data found.');
     }
@@ -68,22 +73,16 @@ class _CompanyScreenState extends State<CompanyScreen> {
             'Content-Type': 'application/json',
           }
       );
-
       if (response.statusCode == 200) {
         // Decode the JSON response
         List<dynamic> jsonData = json.decode(response.body);
-
         print('Json data : $jsonData');
-
-
-
         List<Job> fetchedJobs = jsonData.map((data) => Job.fromJson(data)).toList();
         // Update the TextEditingController with the job title or any other field
         setState(() {
           jobs = fetchedJobs;
           isLoading = false;
         });
-
         // _test.text = job.title;
         //
         // print('API Response: ${jsonData}');
@@ -98,8 +97,6 @@ class _CompanyScreenState extends State<CompanyScreen> {
       setState(() => isLoading = false);
     }
   }
-
-
 
   final List<Company> companies = [
     Company(
@@ -163,7 +160,7 @@ class _CompanyScreenState extends State<CompanyScreen> {
                     SizedBox(height: 10),
                     Text(
                       companies.isNotEmpty
-                          ? companies.first.name
+                          ? companyName.toString()
                           : "No Company",
                       style:
                           TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
@@ -184,43 +181,42 @@ class _CompanyScreenState extends State<CompanyScreen> {
                   },
                 ),
                 ),
-              Align(
-                alignment: Alignment.bottomRight,
-                child: FloatingActionButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => CreatePost(
-                            job: Job(
-                              id: 0, // Default ID
-                              title: "",
-                              description: "",
-                              location: "",
-                              salaryRange: "",
-                              jobPosition: "",
-                              company: "",
-                              status: true,
-                              quantity: 0,
-                              applicant_count: 0,
-                              createdAt: "",
-                              updatedAt: "",
-                            ),
-                          )
-                      ),
-                    );
-                  },
-                  backgroundColor: Colors.orange,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(100),
-                  ),
-                  child: const Icon(Icons.add, color: Colors.white, size: 30,),
-                ),
-              ),
+
             ],
           ),
         ),
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CreatePost(
+                job: Job(
+                  id: 0,
+                  title: "",
+                  description: "",
+                  location: "",
+                  salaryRange: "",
+                  jobPosition: "",
+                  company: "",
+                  status: true,
+                  quantity: 0,
+                  applicant_count: 0,
+                  createdAt: "",
+                  updatedAt: "",
+                ),
+              ),
+            ),
+          );
+        },
+        backgroundColor: Colors.orange,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(100),
+        ),
+        child: const Icon(Icons.add, color: Colors.white, size: 30),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 }
