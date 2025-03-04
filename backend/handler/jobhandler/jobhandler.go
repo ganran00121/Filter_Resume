@@ -46,6 +46,13 @@ func NewJobHandler(jobService jobservice.IJobService) *JobHandler {
 	return &JobHandler{JobService: jobService}
 }
 
+const (
+	errInvalidJobID    = "Invalid job ID"
+	errJobPostNotFound = "Job post not found"
+	errUnauthorized    = "Unauthorized"
+	errDeleteJobPost   = "Failed to delete job post"
+)
+
 // Job Post Handlers
 
 // CreateJobPost handles POST /api/jobs
@@ -106,19 +113,29 @@ func (h *JobHandler) UpdateJobPost(c *fiber.Ctx) error {
 
 // DeleteJobPost handles DELETE /api/jobs/:id
 func (h *JobHandler) DeleteJobPost(c *fiber.Ctx) error {
-	id, err := strconv.ParseUint(c.Params("id"), 10, 64)
+	jobID, err := strconv.ParseUint(c.Params("id"), 10, 64)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid job ID"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": errInvalidJobID})
 	}
 
-	if err := h.JobService.DeleteJobPost(uint(id)); err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Job Post not found"})
+	// Get the user ID from the JWT token.
+	userID, err := getUserIDFromToken(c) // You'll need this helper function
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": errUnauthorized})
+	}
+
+	// Call the service layer, passing both the job ID and user ID.
+	if err := h.JobService.DeleteJobPost(uint(jobID), userID); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": errJobPostNotFound})
+		} else if errors.Is(err, jobservice.ErrUnauthorized) { // Check for ErrUnauthorized
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": errUnauthorized}) // Or 403 Forbidden
 		}
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to delete job post"})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": errDeleteJobPost})
 	}
 
-	return c.Status(fiber.StatusNoContent).Send(nil)
+	// Return a success message with 200 OK
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Job post deleted successfully"})
 }
 
 // ListJobPosts handles GET /api/jobs

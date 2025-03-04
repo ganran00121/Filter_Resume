@@ -3,6 +3,8 @@ package jobmodel
 import (
 	"backend/pkg/model/authmodel"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type JobApplicationStatus string // Capitalize 'J', 'A', and 'S'
@@ -36,6 +38,7 @@ type JobPost struct {
 	Status         bool `gorm:"default:true"` // Use boolean; true for open, false for closed
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
+	DeletedAt      gorm.DeletedAt   `gorm:"index"`
 	ApplicantCount int              `gorm:"default:0"`        // Add this line
 	Applications   []JobApplication `gorm:"foreignKey:JobID"` // Add this line to define the relationship
 }
@@ -51,14 +54,18 @@ type JobApplication struct {
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	GeminiSummary string   `gorm:"type:text"`
+	Questions     *string  `gorm:"type:text"`
 	Score         *float64 `gorm:"type:double"`
 }
 
 type Message struct {
 	ID          uint   `gorm:"primaryKey"`
-	SenderID    uint   `gorm:"not null"` // Foreign key referencing Users
-	ReceiverID  uint   `gorm:"not null"` // Foreign key referencing Users
-	MessageText string `gorm:"type:longtext;not null"`
+	SenderID    uint   `gorm:"not null"`           // Foreign key referencing Users
+	ReceiverID  uint   `gorm:"not null"`           // Foreign key referencing Users
+	MessageText string `gorm:"type:text;not null"` // Explicitly set type
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+	DeletedAt   gorm.DeletedAt `gorm:"index"`
+	Sender      authmodel.User `gorm:"foreignKey:SenderID"`   // For preloading
+	Receiver    authmodel.User `gorm:"foreignKey:ReceiverID"` // For preloading
 }

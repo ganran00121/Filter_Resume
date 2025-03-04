@@ -18,7 +18,7 @@ type IJobService interface {
 	CreateJobPost(jobPost *jobmodel.JobPost) error
 	GetJobPostByID(id uint) (*jobmodel.JobPost, error)
 	UpdateJobPost(jobPost *jobmodel.JobPost) error
-	DeleteJobPost(id uint) error
+	DeleteJobPost(jobID, userID uint) error
 	ListJobPosts() ([]jobmodel.JobPost, error) // Modified return type
 	ListJobPostsByCompanyID(companyID uint) ([]jobmodel.JobPost, error)
 	ListOpenJobPosts() ([]jobmodel.JobPost, error)
@@ -50,6 +50,14 @@ func NewJobService(db *gorm.DB, pdfExtractor pdfextractor.IPdfExtractor, geminiS
 }
 
 var ErrDuplicateSave = errors.New("job already saved by this user")
+var ErrUnauthorized = errors.New("unauthorized")
+
+const (
+	errInvalidJobID    = "Invalid job ID"
+	errJobPostNotFound = "Job post not found"
+	errUnauthorized    = "Unauthorized"
+	errDeleteJobPost   = "Failed to delete job post"
+)
 
 func (s *JobService) CreateJobPost(jobPost *jobmodel.JobPost) error {
 	return s.DB.Create(jobPost).Error
@@ -75,14 +83,33 @@ func (s *JobService) UpdateJobPost(jobPost *jobmodel.JobPost) error {
 	return nil
 }
 
-func (s *JobService) DeleteJobPost(id uint) error {
-	result := s.DB.Delete(&jobmodel.JobPost{}, id)
+func (s *JobService) DeleteJobPost(jobID, userID uint) error {
+	// 1. Retrieve the job post to check the owner.
+	var jobPost jobmodel.JobPost
+	result := s.DB.First(&jobPost, jobID)
 	if result.Error != nil {
-		return result.Error
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return gorm.ErrRecordNotFound // Job post not found
+		}
+		return fmt.Errorf("failed to retrieve job post: %w", result.Error)
+	}
+
+	// 2. Check if the user is the owner of the job post.
+	if jobPost.UserID != userID {
+		return ErrUnauthorized // Unauthorized access
+	}
+
+	// 3. Delete the job post.
+	result = s.DB.Delete(&jobmodel.JobPost{}, jobID)
+	if result.Error != nil {
+		return fmt.Errorf("failed to delete job post: %w", result.Error)
 	}
 	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
+		// This case should not happen after retrieve job post.
+		// Because the jobPost already retrieves in the step before.
+		return gorm.ErrRecordNotFound // Should not happen, but good to check
 	}
+
 	return nil
 }
 
@@ -116,7 +143,7 @@ func (s *JobService) ListClosedJobPosts() ([]jobmodel.JobPost, error) {
 
 // CreateJobApplication handles job application creation and resume upload.
 func (s *JobService) CreateJobApplication(application *jobmodel.JobApplication, resumeFile []byte) (string, error) {
-	// 1. Generate unique file name.
+	// ... (Steps 1-6: File handling, initial application save - NO CHANGES HERE) ...
 	uniqueID := uuid.New().String()
 	fileName := uniqueID + ".pdf"
 	filePath := filepath.Join("uploads", "resumes", fileName)
@@ -179,26 +206,28 @@ func (s *JobService) CreateJobApplication(application *jobmodel.JobApplication, 
 	}
 
 	// 7. Process with Gemini.
-	// Pass BOTH the job description and resume text to Gemini.
-	generatedText, score, err := s.GeminiService.GenerateContent(jobPost.Description, extractedText)
+	generatedText, score, questions, err := s.GeminiService.GenerateContent(jobPost.Description, extractedText) // Get summary, score, AND questions
 	if err != nil {
-		//Don't rollback here. Log the error, and continue without Gemini
+		// Log and continue (don't prevent application submission)
 		fmt.Printf("Gemini API call failed: %v\n", err)
-
-	} else { // Only save if Gemini call is successful
-		// 8.  Store response and score in JobApplication.
-
-		application.GeminiSummary = generatedText // Save the summary
-		if score != nil {
-			application.Score = score // Save the score
-		}
-		if err := tx.Save(application).Error; err != nil {
-			tx.Rollback()
-			os.Remove(filePath)
-			return "", fmt.Errorf("failed to save Gemini data: %w", err)
-		}
+		generatedText = "Resume analysis with Gemini failed."
 	}
 
+	// 8. Store response, score and questions in JobApplication.
+	application.GeminiSummary = generatedText
+	if score != nil {
+		application.Score = score
+	}
+	if questions != nil {
+		application.Questions = questions // Save the questions
+	}
+
+	if err := tx.Save(application).Error; err != nil {
+		tx.Rollback() // Rollback if saving to job application fails
+		os.Remove(filePath)
+		return "", fmt.Errorf("failed to save Gemini data: %w", err)
+
+	}
 	// --- Transaction Commit ---
 	if err := tx.Commit().Error; err != nil {
 		os.Remove(filePath) //Clean up file
