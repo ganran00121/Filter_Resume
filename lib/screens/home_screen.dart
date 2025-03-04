@@ -7,6 +7,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path/path.dart';
 import 'dart:convert';
 
+final _storage = FlutterSecureStorage();
+
 class HomeScreen extends StatefulWidget {
   @override
   _HomeScreenState createState() => _HomeScreenState();
@@ -15,8 +17,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   List<Job> jobs = [];
   bool isLoading = true;
-
-  final _storage = FlutterSecureStorage();
 
   @override
   void initState() {
@@ -439,10 +439,12 @@ class JobDetailScreen extends StatelessWidget {
                         children: [
                           ElevatedButton(
                             onPressed: () {
-                              showDialog(
-                                context: context,
-                                builder: (context) =>
-                                    UploadResumeScreen(job.id),
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      UploadResumeScreen(job.id),
+                                ),
                               );
                             },
                             style: ElevatedButton.styleFrom(
@@ -488,43 +490,6 @@ class JobDetailScreen extends StatelessWidget {
                         color: Colors.grey,
                       ),
                     ),
-                    // Text(
-                    //   "Job Description",
-                    //   style: TextStyle(
-                    //     fontSize: 18,
-                    //     fontWeight: FontWeight.bold,
-                    //   ),
-                    // ),
-                    // SizedBox(height: 8),
-                    // Text(
-                    //   "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.",
-                    //   style: TextStyle(fontSize: 16),
-                    // ),
-                    // SizedBox(height: 16),
-                    // Text(
-                    //   "Requirements",
-                    //   style: TextStyle(
-                    //     fontSize: 18,
-                    //     fontWeight: FontWeight.bold,
-                    //   ),
-                    // ),
-                    // SizedBox(height: 8),
-                    // Text(
-                    //   "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.",
-                    //   style: TextStyle(fontSize: 16),
-                    // ),
-                    // Text(
-                    //   "Additional",
-                    //   style: TextStyle(
-                    //     fontSize: 18,
-                    //     fontWeight: FontWeight.bold,
-                    //   ),
-                    // ),
-                    // SizedBox(height: 8),
-                    // Text(
-                    //   "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.",
-                    //   style: TextStyle(fontSize: 16),
-                    // ),
                   ],
                 ),
               ),
@@ -546,8 +511,10 @@ class UploadResumeScreen extends StatefulWidget {
 }
 
 class _UploadResumeScreenState extends State<UploadResumeScreen> {
+  bool isLoading = false;
   File? selectedFile;
   String? fileName;
+  String? uploadStatusMessage;
 
   Future<void> pickFile() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -566,12 +533,21 @@ class _UploadResumeScreenState extends State<UploadResumeScreen> {
   Future<void> uploadFile() async {
     if (selectedFile == null) return;
 
+    setState(() {
+      isLoading = true; // เริ่มโหลด
+    });
+
     String baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:3000';
     String url =
         "$baseUrl/api/jobs/${widget.jobId}/apply"; // ใช้ jobId ที่รับมา
 
+    String? token = await _storage.read(key: 'auth_token');
+
     var uri = Uri.parse(url);
     var request = http.MultipartRequest("POST", uri)
+      ..headers['Authorization'] =
+          'Bearer $token' // เพิ่ม Token เข้าไปใน Header
+      ..headers['Content-Type'] = 'multipart/form-data' // กำหนด Content-Type
       ..files.add(await http.MultipartFile.fromPath(
         'resume',
         selectedFile!.path,
@@ -579,11 +555,21 @@ class _UploadResumeScreenState extends State<UploadResumeScreen> {
 
     var response = await request.send();
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      print("อัปโหลดสำเร็จ!");
-    } else {
-      print("อัปโหลดไม่สำเร็จ: ${response.statusCode}");
-    }
+    // setState(() {
+    //   isLoading = false; // หยุดโหลดเมื่ออัปโหลดเสร็จ
+    // });
+
+    if (!mounted) return; // ตรวจสอบว่าหน้ายังเปิดอยู่ก่อน
+
+    setState(() {
+      isLoading = false;
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        uploadStatusMessage = "✅ อัปโหลดสำเร็จ!";
+        
+      } else {
+        uploadStatusMessage = "❌ อัปโหลดไม่สำเร็จ (${response.statusCode})";
+      }
+    });
   }
 
   @override
@@ -599,8 +585,9 @@ class _UploadResumeScreenState extends State<UploadResumeScreen> {
         backgroundColor: Colors.white,
         iconTheme: IconThemeData(color: Colors.black),
       ),
-      body: Center(
-        // ทำให้ UI อยู่ตรงกลาง
+      body: Container(
+      color: Colors.white,
+        child: Center(
         child: Padding(
           padding: const EdgeInsets.all(20.0),
           child: Column(
@@ -643,7 +630,8 @@ class _UploadResumeScreenState extends State<UploadResumeScreen> {
               ),
               SizedBox(height: 30),
               ElevatedButton(
-                onPressed: selectedFile != null ? uploadFile : null,
+                onPressed:
+                    selectedFile != null && !isLoading ? uploadFile : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.orange,
                   padding: EdgeInsets.symmetric(vertical: 14),
@@ -652,14 +640,29 @@ class _UploadResumeScreenState extends State<UploadResumeScreen> {
                   ),
                   minimumSize: Size(double.infinity, 50),
                 ),
-                child: Text(
-                  "Submit",
-                  style: TextStyle(fontSize: 16, color: Colors.white),
-                ),
+                child: isLoading
+                    ? CircularProgressIndicator(color: Colors.white)
+                    : Text(
+                        "Submit",
+                        style: TextStyle(fontSize: 16, color: Colors.white),
+                      ),
               ),
+              if (uploadStatusMessage != null) ...[
+                SizedBox(height: 20),
+                Text(
+                  uploadStatusMessage!,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: uploadStatusMessage!.contains("✅")
+                        ? Colors.green
+                        : Colors.red,
+                  ),
+                ),
+              ],
             ],
           ),
         ),
+      ),
       ),
     );
   }
