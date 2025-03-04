@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path/path.dart';
 import 'dart:convert';
 
@@ -14,6 +15,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   List<Job> jobs = [];
   bool isLoading = true;
+
+  final _storage = FlutterSecureStorage();
 
   @override
   void initState() {
@@ -46,10 +49,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     Uri apiUri = Uri.parse('$baseUrl/api/jobs');
 
     try {
-      var response = await http.get(apiUri);
+      String? token = await _storage.read(key: 'auth_token');
+
+      var response = await http.get(
+        apiUri,
+        headers: {
+          'Authorization': token != null ? 'Bearer $token' : '',
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+      );
       if (response.statusCode == 200) {
         List<dynamic> jsonData = json.decode(response.body);
-        List<Job> fetchedJobs = jsonData.map((data) => Job.fromJson(data)).toList();
+        List<Job> fetchedJobs =
+            jsonData.map((data) => Job.fromJson(data)).toList();
 
         setState(() {
           jobs = fetchedJobs;
@@ -88,12 +100,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
               SizedBox(height: 15),
               Expanded(
-                child: ListView.builder(
-                  itemCount: jobs.length,
-                  itemBuilder: (context, index) {
-                    return JobCard(job: jobs[index]);
-                  },
-                ),
+                child: isLoading
+                    ? Center(
+                        child:
+                            CircularProgressIndicator()) // แสดงตัวหมุนเมื่อโหลด
+                    : ListView.builder(
+                        itemCount: jobs.length,
+                        itemBuilder: (context, index) {
+                          return JobCard(job: jobs[index]);
+                        },
+                      ),
               ),
             ],
           ),
@@ -130,19 +146,18 @@ class Job {
 
   factory Job.fromJson(Map<String, dynamic> json) {
     return Job(
-      id: json['id'] ?? 0,  // แก้จาก 'ID' เป็น 'id' และใช้ ?? 0 กัน null
+      id: json['id'] ?? 0, // แก้จาก 'ID' เป็น 'id' และใช้ ?? 0 กัน null
       title: json['title'] ?? '',
       description: json['description'] ?? '',
       location: json['location'] ?? '',
       salaryRange: json['salary_range'] ?? '',
-      quantity: json['quantity'] ?? 0,  // ใช้ ?? 0 กัน null
+      quantity: json['quantity'] ?? 0, // ใช้ ?? 0 กัน null
       jobPosition: json['job_position'] ?? '',
-      status: json['status'] ?? false,  // ถ้า null ให้เป็น false
+      status: json['status'] ?? false, // ถ้า null ให้เป็น false
       createdAt: json['created_at'] ?? '',
       updatedAt: json['updated_at'] ?? '',
     );
   }
-
 }
 
 class JobCard extends StatelessWidget {
@@ -209,38 +224,32 @@ class JobCard extends StatelessWidget {
                     SizedBox(height: 8),
                     Row(
                       children: [
-                        Expanded(child: _buildInfo(Icons.location_on, job.location)),
+                        Expanded(
+                            child: _buildInfo(Icons.location_on, job.location)),
                       ],
                     ),
                     SizedBox(height: 8), // เพิ่มระยะห่างระหว่างบรรทัด
                     Row(
                       children: [
-                        Expanded(child: _buildInfo(Icons.attach_money, job.salaryRange)),
+                        Expanded(
+                            child: _buildInfo(
+                                Icons.attach_money, job.salaryRange)),
                       ],
                     ),
                     Row(
                       children: [
-
-                        Expanded(child: _buildInfo(Icons.people, job.quantity.toString())),
-
+                        Expanded(
+                            child: _buildInfo(
+                                Icons.people, job.quantity.toString())),
                       ],
                     ),
                     SizedBox(height: 8), // เพิ่มระยะห่างระหว่างบรรทัด
                     Row(
                       children: [
-                        Expanded(child: _buildInfo(Icons.work, job.jobPosition)),
+                        Expanded(
+                            child: _buildInfo(Icons.work, job.jobPosition)),
                       ],
                     ),
-                    // Wrap(
-                    //   spacing: 8,
-                    //   runSpacing: 4,
-                    //   children: [
-                    //     _buildInfo(Icons.location_on, job.location),
-                    //     _buildInfo(Icons.attach_money, job.salaryRange),
-                    //     _buildInfo(Icons.people, job.quantity.toString()),
-                    //     _buildInfo(Icons.work, job.jobPosition),
-                    //   ],
-                    // ),
                   ],
                 ),
               ),
@@ -293,8 +302,7 @@ class JobDetailScreen extends StatelessWidget {
         backgroundColor: Colors.transparent, // เปลี่ยนสีพื้นหลังเป็นโปร่งใส
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios,
-              color: Colors.white),
+          icon: Icon(Icons.arrow_back_ios, color: Colors.white),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -433,7 +441,8 @@ class JobDetailScreen extends StatelessWidget {
                             onPressed: () {
                               showDialog(
                                 context: context,
-                                builder: (context) => UploadResumeScreen(job.id),
+                                builder: (context) =>
+                                    UploadResumeScreen(job.id),
                               );
                             },
                             style: ElevatedButton.styleFrom(
@@ -460,15 +469,12 @@ class JobDetailScreen extends StatelessWidget {
                               textStyle: TextStyle(fontSize: 16),
                               shape: RoundedRectangleBorder(
                                 // เพิ่ม shape
-                                borderRadius:
-                                    BorderRadius.circular(8.0),
+                                borderRadius: BorderRadius.circular(8.0),
                               ),
                             ),
                             child: Text(
                               "บันทึก",
-                              style: TextStyle(
-                                  color: Color(
-                                      0xFF0065FF)),
+                              style: TextStyle(color: Color(0xFF0065FF)),
                             ),
                           ),
                         ],
@@ -561,7 +567,8 @@ class _UploadResumeScreenState extends State<UploadResumeScreen> {
     if (selectedFile == null) return;
 
     String baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:3000';
-    String url = "$baseUrl/api/jobs/${widget.jobId}/apply"; // ใช้ jobId ที่รับมา
+    String url =
+        "$baseUrl/api/jobs/${widget.jobId}/apply"; // ใช้ jobId ที่รับมา
 
     var uri = Uri.parse(url);
     var request = http.MultipartRequest("POST", uri)
@@ -574,12 +581,10 @@ class _UploadResumeScreenState extends State<UploadResumeScreen> {
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       print("อัปโหลดสำเร็จ!");
-
     } else {
       print("อัปโหลดไม่สำเร็จ: ${response.statusCode}");
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -594,12 +599,15 @@ class _UploadResumeScreenState extends State<UploadResumeScreen> {
         backgroundColor: Colors.white,
         iconTheme: IconThemeData(color: Colors.black),
       ),
-      body: Center( // ทำให้ UI อยู่ตรงกลาง
+      body: Center(
+        // ทำให้ UI อยู่ตรงกลาง
         child: Padding(
           padding: const EdgeInsets.all(20.0),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center, // จัดให้อยู่ตรงกลางแนวตั้ง
-            crossAxisAlignment: CrossAxisAlignment.center, // จัดให้อยู่ตรงกลางแนวนอน
+            mainAxisAlignment:
+                MainAxisAlignment.center, // จัดให้อยู่ตรงกลางแนวตั้ง
+            crossAxisAlignment:
+                CrossAxisAlignment.center, // จัดให้อยู่ตรงกลางแนวนอน
             children: [
               Text(
                 "Upload file Resume",
@@ -619,12 +627,14 @@ class _UploadResumeScreenState extends State<UploadResumeScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.upload_file, size: 40, color: Colors.grey[700]),
+                        Icon(Icons.upload_file,
+                            size: 40, color: Colors.grey[700]),
                         SizedBox(height: 10),
                         Text(
                           fileName ?? "Upload file\n(รองรับเฉพาะ PDF)",
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+                          style:
+                              TextStyle(fontSize: 16, color: Colors.grey[700]),
                         ),
                       ],
                     ),
