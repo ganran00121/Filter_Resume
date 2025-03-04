@@ -18,6 +18,7 @@ final TextEditingController _salary = TextEditingController();
 final TextEditingController _people = TextEditingController();
 final TextEditingController _position = TextEditingController();
 final TextEditingController _description = TextEditingController();
+int _count = 0;
 
 final quill.QuillController _controller = quill.QuillController.basic();
 
@@ -319,8 +320,10 @@ class JobCard extends StatelessWidget {
 
   JobCard({required this.job});
 
+
   @override
   Widget build(BuildContext context) {
+    _count = job.applicant_count;
     return GestureDetector(
       child: Card(
         color: Colors.white,
@@ -396,7 +399,7 @@ class JobCard extends StatelessWidget {
                       Expanded(
                         child: Row(
                           children: [
-                            Text("จำนวนคนสมัคร :"),
+                            Text('จำนวนผู้สมัคร: $_count'),
                             SizedBox(width: 8),
                             Text(''),
                           ],
@@ -525,15 +528,12 @@ class JobDetail extends StatelessWidget {
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
-          "title": updatedJob.title,
-          "description": updatedJob.description,
-          "location": updatedJob.location,
-          "salary_range": updatedJob.salaryRange,
-          "job_position": updatedJob.jobPosition,
-          "company_name": updatedJob.company,
-          "status": updatedJob.status,
-          "quantity": updatedJob.quantity,
-          "applicant_count": updatedJob.applicant_count,
+          "Title": updatedJob.title,
+          "Description": updatedJob.description,
+          "Location": updatedJob.location,
+          "salaryRange": updatedJob.salaryRange,
+          "JobPosition": updatedJob.jobPosition,
+          "Quantity": updatedJob.quantity,
         }),
       );
 
@@ -818,27 +818,40 @@ class JobDetail extends StatelessWidget {
                         ],
                       ),
                     ),
-                    ElevatedButton(
-                      onPressed: () {
-                        Job updatedJob = Job(
-                          id: job.id,
-                          title: _title.text,
-                          description: _description.text,
-                          location: _location.text,
-                          salaryRange: _salary.text,
-                          jobPosition: _position.text,
-                          company: job.company,
-                          status: job.status,
-                          quantity: int.tryParse(_people.text) ?? job.quantity,
-                          applicant_count: job.applicant_count,
-                          createdAt: job.createdAt,
-                          updatedAt: DateTime.now().toString(),
-                        );
+                    SizedBox(height: 24,),
+                    Center(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          Job updatedJob = Job(
+                            id: job.id,
+                            title: _title.text,
+                            description: _description.text,
+                            location: _location.text,
+                            salaryRange: _salary.text,
+                            jobPosition: _position.text,
+                            company: job.company,
+                            status: job.status,
+                            quantity: int.tryParse(_people.text) ?? job.quantity,
+                            applicant_count: job.applicant_count,
+                            createdAt: job.createdAt,
+                            updatedAt: DateTime.now().toString(),
+                          );
 
-                        updateJob(job.id, updatedJob);
-                      },
-                      child: Text("Save Changes"),
+                          await updateJob(job.id, updatedJob);
+
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange[50],
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: Text("Save Changes", style: TextStyle(color: Colors.deepOrange)),
+                      ),
                     ),
+
                   ],
                 ),
               ),
