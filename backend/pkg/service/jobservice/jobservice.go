@@ -49,6 +49,8 @@ func NewJobService(db *gorm.DB, pdfExtractor pdfextractor.IPdfExtractor, geminiS
 	return &JobService{DB: db, PdfExtractor: pdfExtractor, GeminiService: geminiService}
 }
 
+var ErrDuplicateSave = errors.New("job already saved by this user")
+
 func (s *JobService) CreateJobPost(jobPost *jobmodel.JobPost) error {
 	return s.DB.Create(jobPost).Error
 }
@@ -240,8 +242,25 @@ func (s *JobService) ListJobApplicationsByUserID(userID uint) ([]jobmodel.JobApp
 
 // SavedJob methods
 func (s *JobService) SaveJob(userID, jobID uint) error {
+	// 1. Check if the job is ALREADY saved by the user.
+	var existingSavedJob jobmodel.SavedJob
+	result := s.DB.Where("user_id = ? AND job_id = ?", userID, jobID).First(&existingSavedJob)
+
+	if result.Error == nil {
+		// A record was found, meaning it's a duplicate.
+		return ErrDuplicateSave
+	} else if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		// Some other database error occurred.
+		return fmt.Errorf("failed to check for existing saved job: %w", result.Error)
+	}
+
+	// 2. If no existing record, proceed with saving.
 	savedJob := jobmodel.SavedJob{UserID: userID, JobID: jobID}
-	return s.DB.Create(&savedJob).Error
+	if err := s.DB.Create(&savedJob).Error; err != nil {
+		return fmt.Errorf("failed to save job: %w", err)
+	}
+
+	return nil
 }
 
 func (s *JobService) UnsaveJob(userID, jobID uint) error {
@@ -257,7 +276,11 @@ func (s *JobService) UnsaveJob(userID, jobID uint) error {
 
 func (s *JobService) ListSavedJobs(userID uint) ([]jobmodel.SavedJob, error) {
 	var savedJobs []jobmodel.SavedJob
-	err := s.DB.Where("user_id = ?", userID).Find(&savedJobs).Error
+	err := s.DB.
+		Preload("JobPost").
+		Preload("JobPost.User").
+		Where("user_id = ?", userID).
+		Find(&savedJobs).Error
 	return savedJobs, err
 }
 

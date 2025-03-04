@@ -4,6 +4,7 @@ import (
 	"backend/pkg/model/jobmodel"
 	"backend/pkg/service/jobservice"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -368,6 +369,10 @@ func (h *JobHandler) SaveJob(c *fiber.Ctx) error {
 	}
 
 	if err := h.JobService.SaveJob(uint(userID), uint(jobID)); err != nil {
+		// Check for the specific duplicate save error.
+		if errors.Is(err, jobservice.ErrDuplicateSave) {
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Job already saved"}) // 409 Conflict
+		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to save job"})
 	}
 
@@ -382,20 +387,23 @@ func (h *JobHandler) UnsaveJob(c *fiber.Ctx) error {
 	}
 	jobID, err := strconv.ParseUint(c.Params("jobId"), 10, 64)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid job ID3"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid job ID"}) // Corrected error message
 	}
 
 	if err := h.JobService.UnsaveJob(uint(userID), uint(jobID)); err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Job not saved for this user"})
 		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to unsave job"})
 	}
 
-	return c.Status(fiber.StatusNoContent).Send(nil)
+	// Return a success message with 200 OK, instead of 204 No Content
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Job unsaved successfully"})
 }
 
 // ListSavedJobs handles GET /api/jobs/user/:userId/saved
+// jobhandler/jobhandler.go
+
 func (h *JobHandler) ListSavedJobs(c *fiber.Ctx) error {
 	userID, err := strconv.ParseUint(c.Params("userId"), 10, 64)
 	if err != nil {
@@ -407,7 +415,59 @@ func (h *JobHandler) ListSavedJobs(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to retrieve saved jobs"})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(savedJobs)
+	// Define the response structure.  This is VERY important for a clean API.
+	type SavedJobResponse struct {
+		SavedJobID     uint    `json:"saved_job_id"` // The ID of the SavedJob record itself
+		JobID          uint    `json:"job_id"`       // The ID of the JobPost
+		UserID         uint    `json:"user_id"`
+		Title          string  `json:"title"` // Corrected field name: Title
+		Description    string  `json:"description"`
+		Location       string  `json:"location"`
+		SalaryRange    string  `json:"salary_range"`
+		JobPosition    string  `json:"job_position"`
+		CompanyName    *string `json:"company_name"` // Pointer to handle NULL
+		Status         bool    `json:"status"`
+		Quantity       int     `json:"quantity"`
+		ApplicantCount int64   `json:"applicant_count"`
+	}
+
+	responseList := make([]SavedJobResponse, 0, len(savedJobs))
+	for _, savedJob := range savedJobs {
+		// Check if JobPost and User are loaded before accessing.
+		if savedJob.JobPost.ID == 0 {
+			// Handle the case where JobPost is not loaded, e.g., skip, or return a partial response.
+			fmt.Println("Warning: JobPost not preloaded correctly") // Log a warning
+			responseList = append(responseList, SavedJobResponse{
+				SavedJobID:  savedJob.ID,
+				JobID:       savedJob.JobID,
+				Title:       "Unknown Job - Please refresh", // Use the correct field name: Title
+				CompanyName: nil,                            // Set to nil explicitly
+
+			})
+			continue // Skip to the next saved job
+		}
+		//Count applicant
+		count, err := h.JobService.CountApplicationsByJobID(savedJob.JobPost.ID)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to retrieve applicant count"})
+		}
+		responseList = append(responseList, SavedJobResponse{
+			SavedJobID:     savedJob.ID,    // The SavedJob's ID
+			JobID:          savedJob.JobID, // The JobPost's ID
+			UserID:         savedJob.UserID,
+			Title:          savedJob.JobPost.Title, // Access the preloaded JobPost, Correct Field
+			Description:    savedJob.JobPost.Description,
+			Location:       savedJob.JobPost.Location,
+			SalaryRange:    savedJob.JobPost.SalaryRange,
+			JobPosition:    savedJob.JobPost.JobPosition,
+			CompanyName:    savedJob.JobPost.User.CompanyName, // Access the preloaded User
+			Status:         savedJob.JobPost.Status,
+			Quantity:       savedJob.JobPost.Quantity,
+			ApplicantCount: count,
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(responseList)
 }
 
 // CheckIfJobIsSaved handles GET /api/jobs/user/:userId/saved/:jobId
