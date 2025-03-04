@@ -10,7 +10,7 @@ import (
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 	"gorm.io/gorm"
 )
 
@@ -201,44 +201,79 @@ func (h *JobHandler) CreateJobApplication(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid job ID"})
 	}
 
-	var application jobmodel.JobApplication
-	if err := c.BodyParser(&application); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
-	}
-
-	// Get the file from the request.
-	file, err := c.FormFile("resume") // "resume" is the name of the form field
+	// Get the user ID from the JWT token (assuming you have authentication middleware)
+	// This is a placeholder.  You MUST get the user ID from your authentication.
+	userID, err := getUserIDFromToken(c) // Replace with your actual auth logic
 	if err != nil {
-		if err == http.ErrMissingFile {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Resume file is required"})
-		}
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Error retrieving file: " + err.Error()})
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"}) // Or a better error
 	}
-
-	// Open the file.
-	src, err := file.Open()
+	// Parse the multipart form
+	form, err := c.MultipartForm()
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error opening file: " + err.Error()})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid form data"})
 	}
-	defer src.Close()
 
-	// Read the file content into a byte slice.
+	// --- Get resume file ---
+	files := form.File["resume"] // "resume" is the *name* of the file input field in your HTML form
+	if len(files) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "No resume file provided"})
+	}
+	file := files[0] // Get the first file (you can handle multiple files if needed)
+
+	// Open the file
+	resumeFile, err := file.Open()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to open resume file"})
+	}
+	defer resumeFile.Close()
+
+	// Read the file content into a byte slice
 	buf := bytes.NewBuffer(nil)
-	if _, err := io.Copy(buf, src); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error reading file: " + err.Error()})
+	if _, err := io.Copy(buf, resumeFile); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to read resume file"})
 	}
 	fileBytes := buf.Bytes()
 
-	// Set the JobID from the URL parameter.  VERY IMPORTANT.
-	application.JobID = uint(jobID)
-	application.UserID = 1 //Temporary hardcode
-
-	filePath, err := h.JobService.CreateJobApplication(&application, fileBytes)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create job application: " + err.Error()})
+	// Create the application object
+	application := jobmodel.JobApplication{
+		JobID:  uint(jobID),
+		UserID: userID,                               // Use the user ID from the token
+		Status: jobmodel.JobApplicationStatusPending, // Set initial status to "pending"
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "Application submitted successfully", "file_path": filePath})
+	// Call the service to create the application and save the file
+	filePath, err := h.JobService.CreateJobApplication(&application, fileBytes)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()}) // Return specific error
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "Application submitted successfully", "resume_file": filePath})
+}
+
+// getUserIDFromToken extracts the user ID from the JWT in the request context.
+func getUserIDFromToken(c *fiber.Ctx) (uint, error) {
+	user := c.Locals("user") // Get the user object from context (set by middleware)
+	if user == nil {
+		return 0, fmt.Errorf("no user in context")
+	}
+
+	token, ok := user.(*jwt.Token) // Assert to *jwt.Token
+	if !ok {
+		return 0, fmt.Errorf("invalid token type")
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return 0, fmt.Errorf("invalid claims type")
+	}
+
+	// IMPORTANT:  Always validate the data type before using it!
+	userIDFloat, ok := claims["user_id"].(float64) // JWT IDs are often floats
+	if !ok {
+		return 0, fmt.Errorf("invalid user ID format in token")
+	}
+	userID := uint(userIDFloat) // Convert to uint
+	return userID, nil
 }
 
 // GetJobApplication handles GET /api/jobs/applications/:id
@@ -414,33 +449,4 @@ func (h *JobHandler) ListJobApplications(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(applications)
-}
-
-func getUserIDFromToken(c *fiber.Ctx) (uint, error) {
-	// In a real application, you'd extract the user ID from the JWT
-	// or session data.  This is just a placeholder.
-	// Example (using github.com/golang-jwt/jwt):
-
-	user := c.Locals("user") // Get the user object from context (set by middleware)
-	if user == nil {
-		return 0, fmt.Errorf("no user in context")
-	}
-
-	token, ok := user.(*jwt.Token) // Assert to *jwt.Token
-	if !ok {
-		return 0, fmt.Errorf("invalid token type")
-	}
-
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		return 0, fmt.Errorf("invalid claims type")
-	}
-
-	// IMPORTANT:  Always validate the data type before using it!
-	userIDFloat, ok := claims["user_id"].(float64) // JWT IDs are often floats
-	if !ok {
-		return 0, fmt.Errorf("invalid user ID format in token")
-	}
-	userID := uint(userIDFloat) // Convert to uint
-	return userID, nil
 }

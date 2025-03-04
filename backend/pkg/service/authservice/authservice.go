@@ -4,9 +4,10 @@ import (
 	"backend/pkg/model/authmodel"
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 	"gorm.io/gorm"
 )
 
@@ -52,28 +53,26 @@ func (s *AuthService) Register(registerRequest *authmodel.RegisterRequest) error
 
 func (s *AuthService) Login(email, password string) (string, *authmodel.User, error) {
 	var user authmodel.User
-	result := s.DB.Where("email = ?", email).First(&user) // Find the user by email
+	result := s.DB.Where("email = ?", email).First(&user)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return "", nil, ErrUserNotFound // Use named error
+			return "", nil, ErrUserNotFound
 		}
-		return "", nil, fmt.Errorf("failed to query user: %w", result.Error) // Wrap other errors
+		return "", nil, fmt.Errorf("failed to query user: %w", result.Error)
 	}
 
-	// Generate JWT token with *all* user information.
+	// Generate JWT token
 	token, err := generateJWTToken(&user) // Pass the entire user object
 	if err != nil {
 		return "", nil, err
 	}
 
-	return token, &user, nil // Return token, user pointer, and error (which is nil on success)
+	return token, &user, nil // Return the token, user and nil error on success
 }
 
-// ฟังก์ชันสำหรับการสร้าง JWT Token
 func generateJWTToken(user *authmodel.User) (string, error) {
-	// กำหนดข้อมูลใน Token
 	claims := jwt.MapClaims{
-		"user_id":      user.ID,
+		"user_id":      user.ID, // Include user ID
 		"name":         user.Name,
 		"email":        user.Email,
 		"phone":        user.Phone,
@@ -82,13 +81,17 @@ func generateJWTToken(user *authmodel.User) (string, error) {
 		"exp":          time.Now().Add(time.Hour * 24).Unix(), // Token expires in 24 hours
 	}
 
-	// สร้าง JWT Token ด้วยการเข้ารหัส
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	secretKey := []byte("your-secret-key") // ใช้ Secret Key สำหรับการเข้ารหัส
 
-	signedToken, err := token.SignedString(secretKey)
+	// Load secret key from environment variable.
+	secretKey := os.Getenv("JWT_SECRET_KEY")
+	if secretKey == "" {
+		return "", fmt.Errorf("JWT_SECRET_KEY environment variable not set")
+	}
+
+	signedToken, err := token.SignedString([]byte(secretKey)) // Sign the token
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to sign token: %w", err) // More specific error
 	}
 
 	return signedToken, nil

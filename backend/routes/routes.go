@@ -3,6 +3,7 @@ package routes
 import (
 	"backend/handler/authhandler"
 	"backend/handler/jobhandler"
+	"backend/pkg/middleware"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -17,6 +18,7 @@ func RegisterAuthRoutes(app *fiber.App, authHandler *authhandler.AuthHandler) {
 // RegisterJobRoutes sets up routes for job-related operations.
 func RegisterJobRoutes(app *fiber.App, jobHandler *jobhandler.JobHandler) {
 	jobGroup := app.Group("/api/jobs")
+	jobGroup.Use(middleware.AuthMiddleware)
 
 	// Job Post Routes
 	jobGroup.Post("/", jobHandler.CreateJobPost)                          // POST /api/jobs
