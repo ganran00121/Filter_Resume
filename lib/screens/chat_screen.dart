@@ -11,7 +11,6 @@ class ChatScreen extends StatelessWidget {
   final List<Chat> chats = [
     Chat(name: "ThaiBev", image: "assets/images/thaibev.png"),
     Chat(name: "Thai Beverage Plc", image: "assets/images/thaibev.png"),
-    // Add more chat items as needed
   ];
 
   @override

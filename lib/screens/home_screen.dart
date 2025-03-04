@@ -555,11 +555,8 @@ class _UploadResumeScreenState extends State<UploadResumeScreen> {
 
     var response = await request.send();
 
-    // setState(() {
-    //   isLoading = false; // หยุดโหลดเมื่ออัปโหลดเสร็จ
-    // });
 
-    if (!mounted) return; // ตรวจสอบว่าหน้ายังเปิดอยู่ก่อน
+    if (!mounted) return;
 
     setState(() {
       isLoading = false;
