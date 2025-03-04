@@ -43,7 +43,7 @@ class _MainScreenState extends State<MainScreen> {
     HomeScreen(),
     // ExploreScreen(),
     ChatScreen(),
-    // CompanyScreen(),
+    CompanyScreen(),
     ProfileScreen(),
     // SigninScreen(),
   ];
@@ -136,13 +136,13 @@ class _MainScreenState extends State<MainScreen> {
                 ),
                 label: 'Chat',
               ),
-              // BottomNavigationBarItem(
-              //   icon: Padding(
-              //     padding: EdgeInsets.only(top: 8),
-              //     child: Icon(Icons.business, size: 32),
-              //   ),
-              //   label: 'Company',
-              // ),
+              BottomNavigationBarItem(
+                icon: Padding(
+                  padding: EdgeInsets.only(top: 8),
+                  child: Icon(Icons.business, size: 32),
+                ),
+                label: 'Company',
+              ),
               BottomNavigationBarItem(
                 icon: Padding(
                   padding: EdgeInsets.only(top: 8),

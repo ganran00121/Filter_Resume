@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+
 
 class CompanyScreen extends StatefulWidget {
   @override
@@ -15,20 +17,30 @@ final TextEditingController _people = TextEditingController();
 final TextEditingController _position = TextEditingController();
 final TextEditingController _test = TextEditingController();
 
+final quill.QuillController _controller = quill.QuillController.basic();
+
 class _CompanyScreenState extends State<CompanyScreen> {
+  List<Job> jobs = [];
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchData();
+  }
 
   Future<Job?> fetchData() async {
     print('FetchData');
     String baseUrl = dotenv.env['BASE_URL'] ?? 'default_url';
     print('API baseUrl: ${baseUrl}');
-    // ตรวจสอบให้แน่ใจว่า baseUrl มี http:// หรือ https:// นำหน้า
+
     if (!baseUrl.startsWith('http')) {
       baseUrl = 'https://$baseUrl';
     }
 
     Uri apiUri = Uri.parse(baseUrl).replace(path: '${Uri
         .parse(baseUrl)
-        .path}/api/jobs/2');
+        .path}/api/jobs'); //
     print("URL : ${apiUri}");
     // ยิง API
     try {
@@ -36,16 +48,20 @@ class _CompanyScreenState extends State<CompanyScreen> {
 
       if (response.statusCode == 200) {
         // Decode the JSON response
-        Map<String, dynamic> jsonData = jsonDecode(response.body);
-        print('API Response: ${response.body}');
+        List<dynamic> jsonData = json.decode(response.body);
+
+        List<Job> fetchedJobs = jsonData.map((data) => Job.fromJson(data)).toList();
         // Update the TextEditingController with the job title or any other field
-        Job job = Job.frommJson(jsonData);
+        setState(() {
+          jobs = fetchedJobs;
+          isLoading = false;
+        });
 
-        _test.text = job.title;
-
-        print('API Response: ${jsonData}');
-        print('Job Title: ${job.title}');
-        return job;
+        // _test.text = job.title;
+        //
+        // print('API Response: ${jsonData}');
+        // print('Job Title: ${job.title}');
+        // return job;
       } else {
         print('Failed to load data. Status code: ${response.statusCode}');
         return null;
@@ -64,37 +80,26 @@ class _CompanyScreenState extends State<CompanyScreen> {
       image: "assets/images/opendurian.png",
     )
   ];
-  final List<Job> jobs = [
-    Job(
-      id: 1,
-      title: "Full Stack Developer (WFH) [J108]",
-      company: "OpenDurian Co., Ltd.",
-      location: "จตุจักร กรุงเทพมหานคร",
-      salary: "25,000 - 40,000 per month",
-      people: 2,
-      position: "Full Stack Developer",
-      image: "assets/images/opendurian.png",
-      applicant_count: "3",
-      description: "\nlorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt\n\nRequirement\n\nlorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt\n\nAdditional\n\nlorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt",
-    )
-  ];
+  // final List<Job> jobs = [
+  //   Job(
+  //     id: 1,
+  //     title: "Full Stack Developer (WFH) [J108]",
+  //     company: "OpenDurian Co., Ltd.",
+  //     location: "จตุจักร กรุงเทพมหานคร",
+  //     salary: "25,000 - 40,000 per month",
+  //     people: 2,
+  //     position: "Full Stack Developer",
+  //     image: "assets/images/opendurian.png",
+  //     applicant_count: "3",
+  //     description: "\nlorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt\n\nRequirement\n\nlorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt\n\nAdditional\n\nlorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt",
+  //   )
+  // ];
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       fetchData();
     }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    fetchData();
-    _title.text = jobs[0].title;
-    _salary.text = jobs[0].salary;
-    _location.text = jobs[0].location;
-    // _people.text = jobs[0].people;
-    _position.text = jobs[0].position;
   }
 
   @override
@@ -176,43 +181,48 @@ class Company {
 }
 
 class Job {
-  final String title,
-      company,
-      location,
-      salary,
-      position,
-      image,
-      applicant_count,
-      description;
-  final int id,
-      people;
-
+  final int id;
+  final String title;
+  final String description;
+  final String location;
+  final String company;
+  final String salaryRange;
+  final int quantity;
+  final String jobPosition;
+  final bool status;
+  final String applicant_count;
+  final String createdAt;
+  final String updatedAt;
 
   Job({
-    required this.title,
-    required this.company,
-    required this.location,
-    required this.salary,
-    required this.people,
-    required this.position,
-    required this.image,
-    required this.applicant_count,
-    required this.description,
     required this.id,
+    required this.title,
+    required this.description,
+    required this.location,
+    required this.company,
+    required this.salaryRange,
+    required this.quantity,
+    required this.jobPosition,
+    required this.status,
+    required this.applicant_count,
+    required this.createdAt,
+    required this.updatedAt,
   });
 
-  factory Job.frommJson(Map<String, dynamic> json) {
+  factory Job.fromJson(Map<String, dynamic> json) {
     return Job(
-      id: json['ID'] ?? 0,
-      title: json['Title'] ?? 'No Title',
-      company: json['Company'] ?? 'Unknown Company',
-      location: json['Location'] ?? 'Unknown Location',
-      salary: json['SalaryRange'] ?? 'No Salary Info',
-      description: json['description'] ?? 'No Description',
-      people: json['Quantity'] ?? 'No People',
-      position: json['JobPosition'] ?? 'No Position',
-      image: json['image'] ?? 'No Image',
-      applicant_count: json['count'] ?? 'No Count',
+      id: json['id'] ?? 0,  // แก้จาก 'ID' เป็น 'id' และใช้ ?? 0 กัน null
+      company: json['company_name'] ?? '',
+      title: json['title'] ?? '',
+      description: json['description'] ?? '',
+      location: json['location'] ?? '',
+      salaryRange: json['salary_range'] ?? '',
+      quantity: json['quantity'] ?? 0,  // ใช้ ?? 0 กัน null
+      jobPosition: json['job_position'] ?? '',
+      status: json['status'] ?? false,  // ถ้า null ให้เป็น false
+      createdAt: json['created_at'] ?? '',
+      applicant_count: json['applicant_count'] ?? '',
+      updatedAt: json['updated_at'] ?? '',
     );
   }
 
@@ -330,14 +340,28 @@ class JobCard extends StatelessWidget {
                     ),
                   ),
                   SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
+                  Row(
                     children: [
-                      _buildInfo(Icons.location_on, job.location),
-                      _buildInfo(Icons.attach_money, job.salary),
-                      // _buildInfo(Icons.people, job.people),
-                      _buildInfo(Icons.work, job.position),
+                      Expanded(child: _buildInfo(Icons.location_on, job.location)),
+                    ],
+                  ),
+                  SizedBox(height: 8), // เพิ่มระยะห่างระหว่างบรรทัด
+                  Row(
+                    children: [
+                      Expanded(child: _buildInfo(Icons.attach_money, job.salaryRange)),
+                    ],
+                  ),
+                  Row(
+                    children: [
+
+                      Expanded(child: _buildInfo(Icons.people, job.quantity.toString())),
+
+                    ],
+                  ),
+                  SizedBox(height: 8), // เพิ่มระยะห่างระหว่างบรรทัด
+                  Row(
+                    children: [
+                      Expanded(child: _buildInfo(Icons.work, job.jobPosition)),
                     ],
                   ),
                   SizedBox(height: 30),
@@ -416,7 +440,8 @@ class JobCard extends StatelessWidget {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: Image.asset(
-                    job.image,
+                    "assets/images/opendurian.png",
+                    // job.image,
                     width: 50,
                     height: 50,
                     fit: BoxFit.cover,
@@ -476,7 +501,8 @@ class JobDetail extends StatelessWidget {
             Stack(
               children: [
                 Image.asset(
-                  job.image,
+                  "assets/images/opendurian.png",
+                  // job.image,
                   width: double.infinity,
                   height: 200,
                   fit: BoxFit.cover,
