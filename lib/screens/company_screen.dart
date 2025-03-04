@@ -4,6 +4,7 @@ import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'chat_company_screen.dart';
 
 
 class CompanyScreen extends StatefulWidget {
@@ -432,8 +433,13 @@ class JobCard extends StatelessWidget {
                         children: [
                           ElevatedButton(
                             onPressed: () {
-
-                            },
+                              int job_id = job.id;
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ChatScreen(id: job_id),
+                                ),
+                              );                            },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Color(0xFFCADDFA),
                               padding: EdgeInsets.symmetric(
@@ -936,8 +942,9 @@ class CreatePost extends StatelessWidget{
         }),
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         print('Job create successfully!');
+
       } else {
         print('Failed to update job. Status code: ${response.statusCode}');
         print('Response: ${response.body}');

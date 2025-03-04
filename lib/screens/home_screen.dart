@@ -58,7 +58,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           'Content-Type': 'application/json; charset=UTF-8',
         },
       );
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         List<dynamic> jsonData = json.decode(response.body);
         List<Job> fetchedJobs =
             jsonData.map((data) => Job.fromJson(data)).toList();
@@ -67,7 +67,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           jobs = fetchedJobs;
           isLoading = false;
         });
-      } else {
+      } else if(response.statusCode == 401){
+        Map<String, String> user = await _storage.readAll();
+        print("userinfo : ${user}");
+
         throw Exception('Failed to load jobs');
       }
     } catch (e) {

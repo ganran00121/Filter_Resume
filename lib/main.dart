@@ -65,14 +65,17 @@ class _MainScreenState extends State<MainScreen> {
 
   Future<void> _checkLoginStatus() async {
     String? storedToken = await _storage.read(key: 'auth_token');
+    Map<String, String> user = await _storage.readAll();
     setState(() {
       _isLoading = false;
       if(storedToken != null){
         _isLoggedIn = true;
         print("isLoggedIn = true - token : $storedToken");
+        print("userinfo : ${user}");
       }else{
         _isLoggedIn = false;
         print("isLoggedIn = false - token : $storedToken");
+        print("userinfo : ${user}");
       }
     });
 
