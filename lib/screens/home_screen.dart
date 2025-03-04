@@ -1,6 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:path/path.dart';
 import 'dart:convert';
 
 class HomeScreen extends StatefulWidget {
@@ -9,6 +12,9 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+  List<Job> jobs = [];
+  bool isLoading = true;
+
   @override
   void initState() {
     super.initState();
@@ -30,50 +36,33 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Future<void> fetchData() async {
-    print('FetchData');
+    setState(() => isLoading = true);
     String baseUrl = dotenv.env['BASE_URL'] ?? 'default_url';
-    print('API baseUrl: ${baseUrl}');
-    // ตรวจสอบให้แน่ใจว่า baseUrl มี http:// หรือ https:// นำหน้า
+
     if (!baseUrl.startsWith('http')) {
       baseUrl = 'https://$baseUrl';
     }
 
-    Uri apiUri = Uri.parse(baseUrl).replace(path: '${Uri.parse(baseUrl).path}/health');
-    print("URL : ${apiUri}");
-    // ยิง API
-    var response = await http.get(apiUri);
-    print('API Response: ${response.body}');
-  }
+    Uri apiUri = Uri.parse('$baseUrl/api/jobs');
 
-  final List<Job> jobs = [
-    Job(
-      title: "Full Stack Developer (WFH) [J108]",
-      company: "OpenDurian Co., Ltd.",
-      location: "จตุจักร กรุงเทพมหานคร",
-      salary: "25,000 - 40,000 per month",
-      people: "1-4 คน",
-      position: "Full Stack Developer",
-      image: "assets/images/opendurian.png",
-    ),
-    Job(
-      title: "Full Stack Javascript Developer",
-      company: "Future Makers Co., Ltd.",
-      location: "คลองสาม กรุงเทพมหานคร",
-      salary: "35,000 - 52,500 per month",
-      people: "1-3 คน",
-      position: "Full Stack Developer",
-      image: "assets/images/futuremakers.png",
-    ),
-    Job(
-      title: "เจ้าหน้าที่ประสานงานโครงการ (IT Support)",
-      company: "บริษัท ไทยเบฟเวอเรจ จำกัด (มหาชน)",
-      location: "จ.นครศรีธรรมราช",
-      salary: "25,000 - 40,000 บาท",
-      people: "1-4 คน",
-      position: "IT Support",
-      image: "assets/images/thaibev.png",
-    ),
-  ];
+    try {
+      var response = await http.get(apiUri);
+      if (response.statusCode == 200) {
+        List<dynamic> jsonData = json.decode(response.body);
+        List<Job> fetchedJobs = jsonData.map((data) => Job.fromJson(data)).toList();
+
+        setState(() {
+          jobs = fetchedJobs;
+          isLoading = false;
+        });
+      } else {
+        throw Exception('Failed to load jobs');
+      }
+    } catch (e) {
+      print('Error fetching jobs: $e');
+      setState(() => isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -115,17 +104,45 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 }
 
 class Job {
-  final String title, company, location, salary, people, position, image;
+  final int id;
+  final String title;
+  final String description;
+  final String location;
+  final String salaryRange;
+  final int quantity;
+  final String jobPosition;
+  final bool status;
+  final String createdAt;
+  final String updatedAt;
 
   Job({
+    required this.id,
     required this.title,
-    required this.company,
+    required this.description,
     required this.location,
-    required this.salary,
-    required this.people,
-    required this.position,
-    required this.image,
+    required this.salaryRange,
+    required this.quantity,
+    required this.jobPosition,
+    required this.status,
+    required this.createdAt,
+    required this.updatedAt,
   });
+
+  factory Job.fromJson(Map<String, dynamic> json) {
+    return Job(
+      id: json['ID'],
+      title: json['Title'],
+      description: json['Description'],
+      location: json['Location'],
+      salaryRange: json['SalaryRange'],
+      quantity: json['Quantity'],
+      jobPosition: json['JobPosition'],
+      status: json['Status'],
+      createdAt: json['CreatedAt'],
+      updatedAt: json['UpdatedAt'],
+    );
+  }
+
 }
 
 class JobCard extends StatelessWidget {
@@ -171,7 +188,7 @@ class JobCard extends StatelessWidget {
                     ),
                     SizedBox(height: 4),
                     Text(
-                      job.company,
+                      job.title,
                       style: TextStyle(color: Colors.grey[700]),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
@@ -190,16 +207,40 @@ class JobCard extends StatelessWidget {
                       ),
                     ),
                     SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 4,
+                    Row(
                       children: [
-                        _buildInfo(Icons.location_on, job.location),
-                        _buildInfo(Icons.attach_money, job.salary),
-                        _buildInfo(Icons.people, job.people),
-                        _buildInfo(Icons.work, job.position),
+                        Expanded(child: _buildInfo(Icons.location_on, job.location)),
                       ],
                     ),
+                    SizedBox(height: 8), // เพิ่มระยะห่างระหว่างบรรทัด
+                    Row(
+                      children: [
+                        Expanded(child: _buildInfo(Icons.attach_money, job.salaryRange)),
+                      ],
+                    ),
+                    Row(
+                      children: [
+
+                        Expanded(child: _buildInfo(Icons.people, job.quantity.toString())),
+
+                      ],
+                    ),
+                    SizedBox(height: 8), // เพิ่มระยะห่างระหว่างบรรทัด
+                    Row(
+                      children: [
+                        Expanded(child: _buildInfo(Icons.work, job.jobPosition)),
+                      ],
+                    ),
+                    // Wrap(
+                    //   spacing: 8,
+                    //   runSpacing: 4,
+                    //   children: [
+                    //     _buildInfo(Icons.location_on, job.location),
+                    //     _buildInfo(Icons.attach_money, job.salaryRange),
+                    //     _buildInfo(Icons.people, job.quantity.toString()),
+                    //     _buildInfo(Icons.work, job.jobPosition),
+                    //   ],
+                    // ),
                   ],
                 ),
               ),
@@ -207,7 +248,7 @@ class JobCard extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: Image.asset(
-                  job.image,
+                  "assets/images/opendurian.png",
                   width: 50,
                   height: 50,
                   fit: BoxFit.cover,
@@ -253,7 +294,7 @@ class JobDetailScreen extends StatelessWidget {
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios,
-              color: Colors.white), // เปลี่ยนสี icon เป็นสีขาว
+              color: Colors.white),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -264,7 +305,7 @@ class JobDetailScreen extends StatelessWidget {
             Stack(
               children: [
                 Image.asset(
-                  job.image,
+                  "assets/images/opendurian.png",
                   width: double.infinity,
                   height: 200,
                   fit: BoxFit.cover,
@@ -323,7 +364,7 @@ class JobDetailScreen extends StatelessWidget {
                     ),
                     SizedBox(height: 8),
                     Text(
-                      job.company,
+                      job.title,
                       style: TextStyle(
                         fontSize: 16,
                         color: Colors.grey,
@@ -347,7 +388,7 @@ class JobDetailScreen extends StatelessWidget {
                             size: 18, color: Colors.orange),
                         SizedBox(width: 4),
                         Text(
-                          job.salary,
+                          job.salaryRange,
                           style: TextStyle(fontSize: 16),
                         ),
                       ],
@@ -358,7 +399,7 @@ class JobDetailScreen extends StatelessWidget {
                         Icon(Icons.people, size: 18, color: Colors.orange),
                         SizedBox(width: 4),
                         Text(
-                          job.people,
+                          job.quantity.toString(),
                           style: TextStyle(fontSize: 16),
                         ),
                       ],
@@ -369,7 +410,7 @@ class JobDetailScreen extends StatelessWidget {
                         Icon(Icons.work, size: 18, color: Colors.orange),
                         SizedBox(width: 4),
                         Text(
-                          job.position,
+                          job.jobPosition,
                           style: TextStyle(fontSize: 16),
                         ),
                       ],
@@ -382,7 +423,6 @@ class JobDetailScreen extends StatelessWidget {
                         color: Colors.grey,
                       ),
                     ),
-
                     SizedBox(height: 16),
                     Container(
                       padding: EdgeInsets.symmetric(),
@@ -390,23 +430,24 @@ class JobDetailScreen extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.start,
                         children: [
                           ElevatedButton(
-                            onPressed: () {},
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (context) => UploadResumeScreen(job.id),
+                              );
+                            },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.orange,
                               padding: EdgeInsets.symmetric(
                                   horizontal: 20, vertical: 8),
                               textStyle: TextStyle(fontSize: 16),
                               shape: RoundedRectangleBorder(
-                                // เพิ่ม shape
-                                borderRadius:
-                                    BorderRadius.circular(8.0), // กำหนดมุมโค้ง
+                                borderRadius: BorderRadius.circular(8.0),
                               ),
                             ),
                             child: Text(
                               "สมัครงาน",
-                              style: TextStyle(
-                                  color: Colors
-                                      .white), // กำหนด color ที่ Text widget โดยตรง
+                              style: TextStyle(color: Colors.white),
                             ),
                           ),
                           SizedBox(width: 8),
@@ -420,13 +461,14 @@ class JobDetailScreen extends StatelessWidget {
                               shape: RoundedRectangleBorder(
                                 // เพิ่ม shape
                                 borderRadius:
-                                    BorderRadius.circular(8.0), // กำหนดมุมโค้ง
+                                    BorderRadius.circular(8.0),
                               ),
                             ),
                             child: Text(
                               "บันทึก",
                               style: TextStyle(
-                                  color: Color(0xFF0065FF)), // กำหนด color ที่ Text widget โดยตรง
+                                  color: Color(
+                                      0xFF0065FF)),
                             ),
                           ),
                         ],
@@ -475,6 +517,131 @@ class JobDetailScreen extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class UploadResumeScreen extends StatefulWidget {
+  final int jobId; // เพิ่มตัวแปรเก็บ jobId
+
+  const UploadResumeScreen(this.jobId, {Key? key}) : super(key: key);
+
+  @override
+  _UploadResumeScreenState createState() => _UploadResumeScreenState();
+}
+
+class _UploadResumeScreenState extends State<UploadResumeScreen> {
+  File? selectedFile;
+  String? fileName;
+
+  Future<void> pickFile() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf'], // อนุญาตเฉพาะไฟล์ PDF
+    );
+
+    if (result != null) {
+      setState(() {
+        selectedFile = File(result.files.single.path!);
+        fileName = result.files.single.name;
+      });
+    }
+  }
+
+  Future<void> uploadFile() async {
+    if (selectedFile == null) return;
+
+    String baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:3000';
+    String url = "$baseUrl/api/jobs/${widget.jobId}/apply"; // ใช้ jobId ที่รับมา
+
+    var uri = Uri.parse(url);
+    var request = http.MultipartRequest("POST", uri)
+      ..files.add(await http.MultipartFile.fromPath(
+        'resume',
+        selectedFile!.path,
+      ));
+
+    var response = await request.send();
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      print("อัปโหลดสำเร็จ!");
+
+    } else {
+      print("อัปโหลดไม่สำเร็จ: ${response.statusCode}");
+    }
+  }
+
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(""),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+        elevation: 0,
+        backgroundColor: Colors.white,
+        iconTheme: IconThemeData(color: Colors.black),
+      ),
+      body: Center( // ทำให้ UI อยู่ตรงกลาง
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center, // จัดให้อยู่ตรงกลางแนวตั้ง
+            crossAxisAlignment: CrossAxisAlignment.center, // จัดให้อยู่ตรงกลางแนวนอน
+            children: [
+              Text(
+                "Upload file Resume",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 20),
+              GestureDetector(
+                onTap: pickFile,
+                child: Container(
+                  width: double.infinity,
+                  height: 400,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.upload_file, size: 40, color: Colors.grey[700]),
+                        SizedBox(height: 10),
+                        Text(
+                          fileName ?? "Upload file\n(รองรับเฉพาะ PDF)",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: 30),
+              ElevatedButton(
+                onPressed: selectedFile != null ? uploadFile : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  padding: EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  minimumSize: Size(double.infinity, 50),
+                ),
+                child: Text(
+                  "Submit",
+                  style: TextStyle(fontSize: 16, color: Colors.white),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
