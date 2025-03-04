@@ -131,6 +131,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         const SizedBox(height: 50),
                         TextFormField(
                           controller: emailController,
+                          enabled: _isEdited,
                           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                           decoration: InputDecoration(
                             labelText: "Email", // หัวข้อของช่องป้อนข้อมูล
@@ -173,6 +174,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         SizedBox(height: 10),
                         TextFormField(
                           controller: phoneController,
+                          enabled: _isEdited,
                           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                           decoration: InputDecoration(
                             labelText: "Phone", // หัวข้อของช่องป้อนข้อมูล

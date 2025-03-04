@@ -6,7 +6,6 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'chat_company_screen.dart';
 
-
 class CompanyScreen extends StatefulWidget {
   @override
   _CompanyScreenState createState() => _CompanyScreenState();
@@ -47,10 +46,10 @@ class _CompanyScreenState extends State<CompanyScreen> {
     String? userData = await _storage.read(key: 'user_data');
     print("userData : $userData");
 
-    if (userData != null){
+    if (userData != null) {
       Map<String, dynamic> userMap = json.decode(userData);
       id = userMap['id'];
-      companyName = userMap['company_name'];
+      companyName = userMap['company_name'] ?? 'Unknown Company';
       print(id);
       print(companyName);
     } else {
@@ -61,9 +60,8 @@ class _CompanyScreenState extends State<CompanyScreen> {
       baseUrl = 'https://$baseUrl';
     }
 
-    Uri apiUri = Uri.parse(baseUrl).replace(path: '${Uri
-        .parse(baseUrl)
-        .path}/api/jobs/user/$id'); //
+    Uri apiUri = Uri.parse(baseUrl)
+        .replace(path: '${Uri.parse(baseUrl).path}/api/jobs/user/$id'); //
     print("URL : ${apiUri}");
     // ยิง API
     try {
@@ -73,10 +71,14 @@ class _CompanyScreenState extends State<CompanyScreen> {
             'Content-Type': 'application/json',
           }
       );
+
       if (response.statusCode == 200) {
         // Decode the JSON response
         List<dynamic> jsonData = json.decode(response.body);
         print('Json data : $jsonData');
+
+
+
         List<Job> fetchedJobs = jsonData.map((data) => Job.fromJson(data)).toList();
         // Update the TextEditingController with the job title or any other field
         setState(() {
@@ -91,8 +93,7 @@ class _CompanyScreenState extends State<CompanyScreen> {
       } else {
         print('Failed to load data. Status code: ${response.statusCode}');
       }
-    }
-    catch (e) {
+    } catch (e) {
       print('Error fetching data: $e');
       setState(() => isLoading = false);
     }
@@ -171,9 +172,7 @@ class _CompanyScreenState extends State<CompanyScreen> {
               SizedBox(height: 35),
               Expanded(
                 child: isLoading
-                    ? Center(
-                        child:
-                          CircularProgressIndicator())
+                    ? Center(child: CircularProgressIndicator())
                     : ListView.builder(
                   itemCount: jobs.length,
                   itemBuilder: (context, index) {
@@ -181,42 +180,43 @@ class _CompanyScreenState extends State<CompanyScreen> {
                   },
                 ),
                 ),
-
+              Align(
+                alignment: Alignment.bottomRight,
+                child: FloatingActionButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => CreatePost(
+                            job: Job(
+                              id: 0, // Default ID
+                              title: "",
+                              description: "",
+                              location: "",
+                              salaryRange: "",
+                              jobPosition: "",
+                              company: "",
+                              status: true,
+                              quantity: 0,
+                              applicant_count: 0,
+                              createdAt: "",
+                              updatedAt: "",
+                            ),
+                          )
+                      ),
+                    );
+                  },
+                  backgroundColor: Colors.orange,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(100),
+                  ),
+                  child: const Icon(Icons.add, color: Colors.white, size: 30,),
+                ),
+              ),
             ],
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => CreatePost(
-                job: Job(
-                  id: 0,
-                  title: "",
-                  description: "",
-                  location: "",
-                  salaryRange: "",
-                  jobPosition: "",
-                  company: "",
-                  status: true,
-                  quantity: 0,
-                  applicant_count: 0,
-                  createdAt: "",
-                  updatedAt: "",
-                ),
-              ),
-            ),
-          );
-        },
-        backgroundColor: Colors.orange,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(100),
-        ),
-        child: const Icon(Icons.add, color: Colors.white, size: 30),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 }
@@ -262,22 +262,20 @@ class Job {
 
   factory Job.fromJson(Map<String, dynamic> json) {
     return Job(
-      id: json['id'] ?? 0,  // แก้จาก 'ID' เป็น 'id' และใช้ ?? 0 กัน null
+      id: json['id'] ?? 0, // แก้จาก 'ID' เป็น 'id' และใช้ ?? 0 กัน null
       company: json['company_name'] ?? '',
       title: json['title'] ?? '',
       description: json['description'] ?? '',
       location: json['location'] ?? '',
       salaryRange: json['salary_range'] ?? '',
-      quantity: json['quantity'] ?? 0,  // ใช้ ?? 0 กัน null
+      quantity: json['quantity'] ?? 0, // ใช้ ?? 0 กัน null
       jobPosition: json['job_position'] ?? '',
-      status: json['status'] ?? false,  // ถ้า null ให้เป็น false
+      status: json['status'] ?? false, // ถ้า null ให้เป็น false
       createdAt: json['created_at'] ?? '',
       applicant_count: json['applicant_count'] ?? '',
       updatedAt: json['updated_at'] ?? '',
     );
   }
-
-
 }
 
 class CompanyCard extends StatelessWidget {
@@ -347,8 +345,7 @@ class JobCard extends StatefulWidget {
   _JobCardState createState() => _JobCardState();
 }
 
-class _JobCardState extends State<JobCard>{
-
+class _JobCardState extends State<JobCard> {
   @override
   Widget build(BuildContext context) {
     _count = widget.job.applicant_count;
@@ -399,26 +396,32 @@ class _JobCardState extends State<JobCard>{
                   SizedBox(height: 8),
                   Row(
                     children: [
-                      Expanded(child: _buildInfo(Icons.location_on, widget.job.location)),
+                      Expanded(
+                          child: _buildInfo(
+                              Icons.location_on, widget.job.location)),
                     ],
                   ),
                   SizedBox(height: 8), // เพิ่มระยะห่างระหว่างบรรทัด
                   Row(
                     children: [
-                      Expanded(child: _buildInfo(Icons.attach_money, widget.job.salaryRange)),
+                      Expanded(
+                          child: _buildInfo(
+                              Icons.attach_money, widget.job.salaryRange)),
                     ],
                   ),
                   Row(
                     children: [
-
-                      Expanded(child: _buildInfo(Icons.people, widget.job.quantity.toString())),
-
+                      Expanded(
+                          child: _buildInfo(
+                              Icons.people, widget.job.quantity.toString())),
                     ],
                   ),
                   SizedBox(height: 8), // เพิ่มระยะห่างระหว่างบรรทัด
                   Row(
                     children: [
-                      Expanded(child: _buildInfo(Icons.work, widget.job.jobPosition)),
+                      Expanded(
+                          child:
+                              _buildInfo(Icons.work, widget.job.jobPosition)),
                     ],
                   ),
                   SizedBox(height: 30),
@@ -439,12 +442,17 @@ class _JobCardState extends State<JobCard>{
                           ElevatedButton(
                             onPressed: () {
                               int job_id = widget.job.id;
+                              String Job_name = widget.job.title;
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => ChatScreen(id: job_id),
+                                  builder: (context) => ChatScreen(
+                                    job_id: job_id,
+                                    job_name: Job_name,
+                                  ),
                                 ),
-                              );                            },
+                              );
+                            },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Color(0xFFCADDFA),
                               padding: EdgeInsets.symmetric(
@@ -453,13 +461,14 @@ class _JobCardState extends State<JobCard>{
                               shape: RoundedRectangleBorder(
                                 // เพิ่ม shape
                                 borderRadius:
-                                BorderRadius.circular(8.0), // กำหนดมุมโค้ง
+                                    BorderRadius.circular(8.0), // กำหนดมุมโค้ง
                               ),
                             ),
-                            child: Text("ตรวจสอบ",
+                            child: Text(
+                              "ตรวจสอบ",
                               style: TextStyle(
                                 color: Color(0xFF0065FF), // กำหนดสี
-                                fontSize: 14.0,           // กำหนดขนาดตัวอักษร
+                                fontSize: 14.0, // กำหนดขนาดตัวอักษร
                                 // fontWeight: FontWeight.w600, // ทำให้ตัวอักษรหนา
                               ),
                             ),
@@ -470,16 +479,20 @@ class _JobCardState extends State<JobCard>{
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => JobDetail(job: widget.job), // Open Job Detail
+                                  builder: (context) => JobDetail(
+                                      job: widget.job), // Open Job Detail
                                 ),
                               ).then((result) {
-                                if (result == "updated" || result == "deleted") {
-                                  setState(() {
-
-                                  });
-                                  if (context.findAncestorStateOfType<_CompanyScreenState>() != null) {
-                                    context.findAncestorStateOfType<_CompanyScreenState>()!.fetchData();
-
+                                if (result == "updated" ||
+                                    result == "deleted") {
+                                  setState(() {});
+                                  if (context.findAncestorStateOfType<
+                                          _CompanyScreenState>() !=
+                                      null) {
+                                    context
+                                        .findAncestorStateOfType<
+                                            _CompanyScreenState>()!
+                                        .fetchData();
                                   }
                                 }
                               });
@@ -492,13 +505,11 @@ class _JobCardState extends State<JobCard>{
                               shape: RoundedRectangleBorder(
                                 // เพิ่ม shape
                                 borderRadius:
-                                BorderRadius.circular(8.0), // กำหนดมุมโค้ง
+                                    BorderRadius.circular(8.0), // กำหนดมุมโค้ง
                               ),
                             ),
                             child: Text("แก้ไข",
-                                style: TextStyle(
-                                    color: Color(0xFFFF0000))
-                            ),
+                                style: TextStyle(color: Color(0xFFFF0000))),
                           ),
                         ],
                       ),
@@ -526,7 +537,6 @@ class _JobCardState extends State<JobCard>{
       ),
     );
   }
-
 
   Widget _buildInfo(IconData icon, String text) {
     return Row(
@@ -615,7 +625,8 @@ class _JobDetailState extends State<JobDetail> {
     }
   }
 
-  Future<void> showDeleteConfirmationDialog(BuildContext context, int jobId) async {
+  Future<void> showDeleteConfirmationDialog(
+      BuildContext context, int jobId) async {
     return showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -668,412 +679,13 @@ class _JobDetailState extends State<JobDetail> {
       } else {
         print("Failed to delete job. Status: ${response.statusCode}");
       }
-    }
-    catch (e) {
+    } catch (e) {
       print("Error deleting job: $e");
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: Icon(Icons.arrow_back_ios,
-            color: Colors.white,
-            ),
-        ),
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Stack(
-              children: [
-                Image.asset(
-                  "assets/images/opendurian.png",
-                  // job.image,
-                  width: double.infinity,
-                  height: 200,
-                  fit: BoxFit.cover,
-                ),
-                Container(
-                  width: double.infinity,
-                  height: 200,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.black.withOpacity(0.7),
-                        Colors.transparent
-                      ], // เพิ่ม opacity ให้สี orange
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            Container(
-              color: Colors.white, // เปลี่ยนสีพื้นหลังที่ต้องการ
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 23),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Container(
-                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[200],
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: TextField(
-                              controller: _title,
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              maxLines: 1,
-                              decoration: InputDecoration(
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.zero,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      widget.job.company,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Icon(Icons.location_on, size: 18, color: Colors.orange),
-                        SizedBox(width: 4),
-                        Expanded(
-                          flex: 2,
-                          child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: TextField(
-                            controller: _location,
-                            style: TextStyle(
-                              fontSize: 16,
-                            ),
-                            decoration: InputDecoration(
-                              border: InputBorder.none,
-                              contentPadding: EdgeInsets.zero,
-                            ),
-                          ),
-                        ),
-                        ),
-                        Expanded(
-                          flex: 1,
-                            child: Column(
-                              children: [
-                                // Image.asset(job.image, height: 100, width: 100, fit: BoxFit.cover,)
-                              ],
-                            ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Icon(Icons.attach_money,
-                            size: 18, color: Colors.orange),
-                        SizedBox(width: 4),
-                        Expanded(
-                          flex: 2,
-                          child: Container(
-                            padding: EdgeInsets.symmetric(horizontal: 12),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[200],
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: TextField(
-                              controller: _salary,
-                              style: TextStyle(
-                                fontSize: 16,
-                              ),
-                              decoration: InputDecoration(
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.zero,
-                              ),
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          flex: 1,
-                          child: Column(
-                            children: [
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Icon(Icons.people, size: 18, color: Colors.orange),
-                        SizedBox(width: 4),
-                        Expanded(
-                          flex: 2,
-                          child: Container(
-                            padding: EdgeInsets.symmetric(horizontal: 12),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[200],
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: TextField(
-                              controller: _people,
-                              style: TextStyle(
-                                fontSize: 16,
-                              ),
-                              decoration: InputDecoration(
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.zero,
-                              ),
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          flex: 1,
-                          child: Column(
-                            children: [
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Icon(Icons.work, size: 18, color: Colors.orange),
-                        SizedBox(width: 4),
-                        Expanded(
-                          flex: 2,
-                          child: Container(
-                            padding: EdgeInsets.symmetric(horizontal: 12),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[200],
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: TextField(
-                              controller: _position,
-                              style: TextStyle(
-                                fontSize: 16,
-                              ),
-                              decoration: InputDecoration(
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.zero,
-                              ),
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          flex: 1,
-                          child: Column(
-                            children: [
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      "Posted 13 ชั่วโมงทีผ่านมา",
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey,
-                      ),
-                    ),
-
-                    SizedBox(height: 16),
-                    Container(
-                      padding: EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[200],
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Job Description",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          TextField(
-                            controller: _description,
-                            maxLines: null, // Allow multiline
-                            style: TextStyle(fontSize: 16, color: Colors.black87),
-                            decoration: InputDecoration(
-                              border: InputBorder.none,
-                              contentPadding: EdgeInsets.zero,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: 24,),
-                    Center(
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          Job updatedPost = Job(
-                            id: widget.job.id,
-                            title: _title.text,
-                            description: _description.text,
-                            location: _location.text,
-                            salaryRange: _salary.text,
-                            jobPosition: _position.text,
-                            company: widget.job.company,
-                            status: widget.job.status,
-                            quantity: int.tryParse(_people.text) ?? widget.job.quantity,
-                            applicant_count: widget.job.applicant_count,
-                            createdAt: widget.job.createdAt,
-                            updatedAt: DateTime.now().toString(),
-                          );
-
-                          await updatePost(widget.job.id, updatedPost);
-
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange[50],
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        child: Text("Save Changes", style: TextStyle(color: Colors.deepOrange)),
-                      ),
-                    ),
-                    SizedBox(height: 24,),
-                    Align(
-                      child: ElevatedButton(
-
-                          onPressed: () {
-                            showDeleteConfirmationDialog(context, widget.job.id);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red[50],
-                            foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ) ,
-                          child: Text('Delete', style: TextStyle(color: Colors.red),),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-  @override
-  void dispose() {
-    _title.dispose();
-    _location.dispose();
-    _salary.dispose();
-    _people.dispose();
-    _position.dispose();
-    _description.dispose();
-    super.dispose();
-  }
-}
-
-// TODO: add detail of company
-class CreatePost extends StatelessWidget{
-  final Job job;
-
-  CreatePost({required this.job});
-
-  Future<void> createJob(int jobId, Job updatedJob) async {
-    String baseUrl = dotenv.env['BASE_URL'] ?? 'default_url';
-
-    if (!baseUrl.startsWith('http')) {
-      baseUrl = 'https://$baseUrl';
-    }
-
-    print('API baseUrl: ${baseUrl}');
-    int? id;
-
-
-    String? token = await _storage.read(key: 'auth_token');
-    String? userData = await _storage.read(key: 'user_data');
-    print("userData : $userData");
-
-    if (userData != null){
-      Map<String, dynamic> userMap = json.decode(userData);
-      id = userMap['id'];
-      print(id);
-    } else {
-      print('No user data found.');
-    }
-
-    Uri apiUri = Uri.parse("$baseUrl/api/jobs");
-
-
-    try {
-      var response = await http.post(
-        apiUri,
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          "UserID" : id,
-          "Title": updatedJob.title,
-          "Description": updatedJob.description,
-          "Location": updatedJob.location,
-          "salaryRange": updatedJob.salaryRange,
-          "JobPosition": updatedJob.jobPosition,
-          "Quantity": updatedJob.quantity,
-          "Status": true
-        }),
-      );
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        print('Job create successfully!');
-
-      } else {
-        print('Failed to update job. Status code: ${response.statusCode}');
-        print('Response: ${response.body}');
-      }
-    } catch (e) {
-      print('Error updating job: $e');
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // TODO: implement build
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -1081,7 +693,8 @@ class CreatePost extends StatelessWidget{
         elevation: 0,
         leading: IconButton(
           onPressed: () => Navigator.of(context).pop(),
-          icon: Icon(Icons.arrow_back_ios,
+          icon: Icon(
+            Icons.arrow_back_ios,
             color: Colors.white,
           ),
         ),
@@ -1118,7 +731,8 @@ class CreatePost extends StatelessWidget{
             Container(
               color: Colors.white, // เปลี่ยนสีพื้นหลังที่ต้องการ
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 23),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 25, vertical: 23),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1127,7 +741,412 @@ class CreatePost extends StatelessWidget{
                       children: [
                         Expanded(
                           child: Container(
-                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: TextField(
+                              controller: _title,
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              maxLines: 1,
+                              decoration: InputDecoration(
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.zero,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      widget.job.company,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Icon(Icons.location_on, size: 18, color: Colors.orange),
+                        SizedBox(width: 4),
+                        Expanded(
+                          flex: 2,
+                          child: Container(
+                            padding: EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: TextField(
+                              controller: _location,
+                              style: TextStyle(
+                                fontSize: 16,
+                              ),
+                              decoration: InputDecoration(
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.zero,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 1,
+                          child: Column(
+                            children: [
+                              // Image.asset(job.image, height: 100, width: 100, fit: BoxFit.cover,)
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(Icons.attach_money,
+                            size: 18, color: Colors.orange),
+                        SizedBox(width: 4),
+                        Expanded(
+                          flex: 2,
+                          child: Container(
+                            padding: EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: TextField(
+                              controller: _salary,
+                              style: TextStyle(
+                                fontSize: 16,
+                              ),
+                              decoration: InputDecoration(
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.zero,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 1,
+                          child: Column(
+                            children: [],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(Icons.people, size: 18, color: Colors.orange),
+                        SizedBox(width: 4),
+                        Expanded(
+                          flex: 2,
+                          child: Container(
+                            padding: EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: TextField(
+                              controller: _people,
+                              style: TextStyle(
+                                fontSize: 16,
+                              ),
+                              decoration: InputDecoration(
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.zero,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 1,
+                          child: Column(
+                            children: [],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(Icons.work, size: 18, color: Colors.orange),
+                        SizedBox(width: 4),
+                        Expanded(
+                          flex: 2,
+                          child: Container(
+                            padding: EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: TextField(
+                              controller: _position,
+                              style: TextStyle(
+                                fontSize: 16,
+                              ),
+                              decoration: InputDecoration(
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.zero,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 1,
+                          child: Column(
+                            children: [],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      "Posted 13 ชั่วโมงทีผ่านมา",
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    Container(
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Job Description",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          TextField(
+                            controller: _description,
+                            maxLines: null, // Allow multiline
+                            style:
+                                TextStyle(fontSize: 16, color: Colors.black87),
+                            decoration: InputDecoration(
+                              border: InputBorder.none,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(
+                      height: 24,
+                    ),
+                    Center(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          Job updatedPost = Job(
+                            id: widget.job.id,
+                            title: _title.text,
+                            description: _description.text,
+                            location: _location.text,
+                            salaryRange: _salary.text,
+                            jobPosition: _position.text,
+                            company: widget.job.company,
+                            status: widget.job.status,
+                            quantity: int.tryParse(_people.text) ??
+                                widget.job.quantity,
+                            applicant_count: widget.job.applicant_count,
+                            createdAt: widget.job.createdAt,
+                            updatedAt: DateTime.now().toString(),
+                          );
+
+                          await updatePost(widget.job.id, updatedPost);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange[50],
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: Text("Save Changes",
+                            style: TextStyle(color: Colors.deepOrange)),
+                      ),
+                    ),
+                    SizedBox(
+                      height: 24,
+                    ),
+                    Align(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          showDeleteConfirmationDialog(context, widget.job.id);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red[50],
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: Text(
+                          'Delete',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _title.dispose();
+    _location.dispose();
+    _salary.dispose();
+    _people.dispose();
+    _position.dispose();
+    _description.dispose();
+    super.dispose();
+  }
+}
+
+// TODO: add detail of company
+class CreatePost extends StatelessWidget {
+  final Job job;
+
+  CreatePost({required this.job});
+
+  Future<void> createJob(int jobId, Job updatedJob) async {
+    String baseUrl = dotenv.env['BASE_URL'] ?? 'default_url';
+
+    if (!baseUrl.startsWith('http')) {
+      baseUrl = 'https://$baseUrl';
+    }
+
+    print('API baseUrl: ${baseUrl}');
+    int? id;
+
+    String? token = await _storage.read(key: 'auth_token');
+    String? userData = await _storage.read(key: 'user_data');
+    print("userData : $userData");
+
+    if (userData != null) {
+      Map<String, dynamic> userMap = json.decode(userData);
+      id = userMap['id'];
+      print(id);
+    } else {
+      print('No user data found.');
+    }
+
+    Uri apiUri = Uri.parse("$baseUrl/api/jobs");
+
+    try {
+      var response = await http.post(
+        apiUri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          "UserID": id,
+          "Title": updatedJob.title,
+          "Description": updatedJob.description,
+          "Location": updatedJob.location,
+          "salaryRange": updatedJob.salaryRange,
+          "JobPosition": updatedJob.jobPosition,
+          "Quantity": updatedJob.quantity,
+          "Status": true
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print('Job create successfully!');
+      } else {
+        print('Failed to update job. Status code: ${response.statusCode}');
+        print('Response: ${response.body}');
+      }
+    } catch (e) {
+      print('Error updating job: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // TODO: implement build
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          onPressed: () => Navigator.of(context).pop(),
+          icon: Icon(
+            Icons.arrow_back_ios,
+            color: Colors.white,
+          ),
+        ),
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                Image.asset(
+                  "assets/images/opendurian.png",
+                  // job.image,
+                  width: double.infinity,
+                  height: 200,
+                  fit: BoxFit.cover,
+                ),
+                Container(
+                  width: double.infinity,
+                  height: 200,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withOpacity(0.7),
+                        Colors.transparent
+                      ], // เพิ่ม opacity ให้สี orange
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Container(
+              color: Colors.white, // เปลี่ยนสีพื้นหลังที่ต้องการ
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 25, vertical: 23),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
                               color: Colors.grey[200],
                               borderRadius: BorderRadius.circular(20),
@@ -1220,8 +1239,7 @@ class CreatePost extends StatelessWidget{
                         Expanded(
                           flex: 1,
                           child: Column(
-                            children: [
-                            ],
+                            children: [],
                           ),
                         ),
                       ],
@@ -1254,8 +1272,7 @@ class CreatePost extends StatelessWidget{
                         Expanded(
                           flex: 1,
                           child: Column(
-                            children: [
-                            ],
+                            children: [],
                           ),
                         ),
                       ],
@@ -1288,8 +1305,7 @@ class CreatePost extends StatelessWidget{
                         Expanded(
                           flex: 1,
                           child: Column(
-                            children: [
-                            ],
+                            children: [],
                           ),
                         ),
                       ],
@@ -1302,7 +1318,6 @@ class CreatePost extends StatelessWidget{
                         color: Colors.grey,
                       ),
                     ),
-
                     SizedBox(height: 16),
                     Container(
                       padding: EdgeInsets.all(12),
@@ -1324,7 +1339,8 @@ class CreatePost extends StatelessWidget{
                           TextField(
                             controller: _description,
                             maxLines: null, // Allow multiline
-                            style: TextStyle(fontSize: 16, color: Colors.black87),
+                            style:
+                                TextStyle(fontSize: 16, color: Colors.black87),
                             decoration: InputDecoration(
                               border: InputBorder.none,
                               contentPadding: EdgeInsets.zero,
@@ -1333,7 +1349,9 @@ class CreatePost extends StatelessWidget{
                         ],
                       ),
                     ),
-                    SizedBox(height: 24,),
+                    SizedBox(
+                      height: 24,
+                    ),
                     Center(
                       child: ElevatedButton(
                         onPressed: () async {
@@ -1346,27 +1364,28 @@ class CreatePost extends StatelessWidget{
                             jobPosition: _position.text,
                             company: job.company,
                             status: job.status,
-                            quantity: int.tryParse(_people.text) ?? job.quantity,
+                            quantity:
+                                int.tryParse(_people.text) ?? job.quantity,
                             applicant_count: job.applicant_count,
                             createdAt: job.createdAt,
                             updatedAt: DateTime.now().toString(),
                           );
 
                           await createJob(job.id, updatedJob);
-
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.orange[50],
                           foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 12),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
-                        child: Text("Create", style: TextStyle(color: Colors.deepOrange)),
+                        child: Text("Create",
+                            style: TextStyle(color: Colors.deepOrange)),
                       ),
                     ),
-
                   ],
                 ),
               ),
