@@ -5,17 +5,17 @@ import (
 )
 
 type User struct {
-	ID          uint    `gorm:"primaryKey"`
-	Name        string  `gorm:"not null"`
-	Email       string  `gorm:"unique;not null"`
-	Password    string  `gorm:"not null"`
-	Phone       string  `gorm:"not null"`
-	UserType    string  `gorm:"type:enum('applicant', 'company');not null"`
-	CompanyName *string `gorm:"type:varchar(255);default:NULL"`
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID           uint    `gorm:"primaryKey"`
+	Name         string  `gorm:"not null"`
+	Email        string  `gorm:"unique;not null"`
+	Password     string  `gorm:"not null"`
+	Phone        string  `gorm:"not null"`
+	UserType     string  `gorm:"type:enum('applicant', 'company');not null"`
+	CompanyName  *string `gorm:"type:varchar(255);default:NULL"`
+	ProfileImage *string `gorm:"type:varchar(255);default:NULL"`
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
-
 type LoginRequest struct {
 	Email    string `json:"email" binding:"required"`
 	Password string `json:"password" binding:"required"`

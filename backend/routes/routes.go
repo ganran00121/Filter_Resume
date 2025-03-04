@@ -13,6 +13,10 @@ func RegisterAuthRoutes(app *fiber.App, authHandler *authhandler.AuthHandler) {
 	authGroup := app.Group("/auth")
 	authGroup.Post("/register", authHandler.Register) // POST /auth/register
 	authGroup.Post("/login", authHandler.Login)       // POST /auth/login
+
+	userGroup := app.Group("/api/user")
+	userGroup.Use(middleware.AuthMiddleware)              // Apply JWT middleware
+	userGroup.Get("/profile", authHandler.GetUserProfile) // POST /api/user/profile
 }
 
 // RegisterJobRoutes sets up routes for job-related operations.

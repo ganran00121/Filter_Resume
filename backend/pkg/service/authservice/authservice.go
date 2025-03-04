@@ -96,3 +96,17 @@ func generateJWTToken(user *authmodel.User) (string, error) {
 
 	return signedToken, nil
 }
+
+func (s *AuthService) GetUserByID(userID uint) (*authmodel.User, error) {
+	var user authmodel.User
+	result := s.DB.First(&user, userID)
+
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, nil // Return nil, nil for "not found" - IMPORTANT
+		}
+		return nil, fmt.Errorf("failed to retrieve user: %w", result.Error)
+	}
+
+	return &user, nil
+}

@@ -4,13 +4,16 @@ import (
 	"backend/pkg/model/authmodel"
 	"backend/pkg/service/authservice"
 	"errors"
+	"fmt"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type IAuthHandler interface {
 	Register(c *fiber.Ctx) error
 	Login(c *fiber.Ctx) error
+	GetUserProfile(c *fiber.Ctx) error
 }
 type AuthHandler struct {
 	AuthService *authservice.AuthService
@@ -87,4 +90,74 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(response)
+}
+
+// GetUserProfile handles GET /api/user/profile
+func (h *AuthHandler) GetUserProfile(c *fiber.Ctx) error {
+	// 1. Get User ID from JWT (Authentication).
+	userID, err := getUserIDFromToken(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"})
+	}
+	// 2. Call the AuthService to get the user.
+	user, err := h.AuthService.GetUserByID(userID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to retrieve user profile"})
+	}
+
+	// 3. Handle User Not Found.
+	if user == nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "User not found"})
+	}
+	// 4. Create a Response Structure (DTO - Data Transfer Object).  This is crucial for security and flexibility.
+	type UserProfileResponse struct {
+		ID           uint    `json:"id"`
+		Name         string  `json:"name"`
+		Email        string  `json:"email"`
+		Phone        *string `json:"phone,omitempty"` // Optional field
+		UserType     string  `json:"user_type"`
+		ProfileImage *string `json:"profile_image,omitempty"`
+		CompanyName  *string `json:"company_name,omitempty"`
+	}
+
+	// 5. Map the User data to the Response Structure.
+	response := UserProfileResponse{
+		ID:           user.ID,
+		Name:         user.Name,
+		Email:        user.Email,
+		Phone:        &user.Phone, // Directly assign (it's already a pointer)
+		UserType:     user.UserType,
+		ProfileImage: user.ProfileImage,
+		CompanyName:  user.CompanyName,
+	}
+
+	// 6. Return the Response.
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
+// Helper function to get user id from jwt token
+func getUserIDFromToken(c *fiber.Ctx) (uint, error) {
+	user := c.Locals("user") // Get the user object from context (set by middleware)
+	if user == nil {
+		return 0, fmt.Errorf("no user in context")
+	}
+
+	token, ok := user.(*jwt.Token) // Assert to *jwt.Token  <-- CORRECT TYPE
+	if !ok {
+		return 0, fmt.Errorf("invalid token type")
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims) // Get the claims
+	if !ok {
+		return 0, fmt.Errorf("invalid claims type")
+	}
+
+	// IMPORTANT:  Always validate the data type before using it!
+	userIDFloat, ok := claims["user_id"].(float64) // JWT IDs are often floats
+	if !ok {
+		return 0, fmt.Errorf("invalid user ID format in token")
+	}
+	userID := uint(userIDFloat) // Convert to uint
+
+	return userID, nil
 }
