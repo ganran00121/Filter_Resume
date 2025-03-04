@@ -1,29 +1,61 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import './signin_screen.dart';
+import 'dart:convert';
 
 final _storage = FlutterSecureStorage();
+
+TextEditingController nameController = TextEditingController();
+TextEditingController emailController = TextEditingController();
+TextEditingController phoneController = TextEditingController();
+TextEditingController userTypeController = TextEditingController();
+
+class Profile {
+  final int id;
+  final String name;
+  final String email;
+  final String phone;
+  final String user_type;
+  final int company_name;
+
+  Profile({
+    required this.id,
+    required this.name,
+    required this.email,
+    required this.phone,
+    required this.user_type,
+    required this.company_name,
+  });
+
+  factory Profile.fromJson(Map<String, dynamic> json) {
+    return Profile(
+      id: json['id'] ?? 0, // แก้จาก 'ID' เป็น 'id' และใช้ ?? 0 กัน null
+      name: json['title'] ?? '',
+      email: json['description'] ?? '',
+      phone: json['location'] ?? '',
+      user_type: json['salary_range'] ?? '',
+      company_name: json['quantity'] ?? 0, // ใช้ ?? 0 กัน null
+    );
+  }
+}
+
 class ProfileScreen extends StatefulWidget {
   @override
   _ProfileScreenState createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  Map<String, dynamic>? userProfile;
+  bool isLoading = true;
 
-  final Profile profile = Profile(
-    firstname: 'BEKBEK',
-    lastname: '101',
-    email: 'bekbek@example.com',
-    phone: '01234567789',
-    gender: 'Male',
-  );
 
   var _isEdited;
 
   @override
-  void initState() {
+  void initState()  {
     super.initState();
     _isEdited = false;
+    fetchData();
   }
   void logout() async {
     await _storage.deleteAll();
@@ -34,18 +66,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Future<void> fetchData() async {
+    setState(() => isLoading = true);
+    Map<String, String> storedData = await _storage.readAll();
+
+    String? storedToken = storedData["user_data"];
+
+    if (storedToken != null && storedToken.isNotEmpty) {
+      try {
+        Map<String, dynamic> userData = jsonDecode(storedToken);
+        setState(() {
+          userProfile = userData;
+          isLoading = false;
+
+          nameController.text = userProfile?['name'] ?? '';
+          emailController.text = userProfile?['email'] ?? '';
+          phoneController.text = userProfile?['phone'] ?? '';
+          userTypeController.text = userProfile?['user_type'] ?? '';
+        });
+      } catch (e) {
+        print("Error decoding user data: $e");
+        setState(() => isLoading = false);
+      }
+    } else {
+      print("No stored user data found");
+      setState(() => isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // var isDark = MediaQuery.of(context).platformBrightness == Brightness.dark;
     return Scaffold(
       backgroundColor: Colors.white,
-      // appBar: AppBar(
-      //   title: Text('Profile', style: Theme.of(context).textTheme.headlineLarge),
-      //   centerTitle: true,
-      //   // actions: [
-      //   //   IconButton(onPressed: () {}, icon: Icon(isDark? Icons.dark_mode : Icons.light_mode))
-      //   // ],
-      // ),
       body: SafeArea(
           child: SingleChildScrollView(
             child: Padding(
@@ -71,33 +123,73 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             child: Image.asset('assets/images/user_profile.png'),
                           ),
                         ),
-                        // Positioned(
-                        //   bottom: 0,
-                        //   right: 0,
-                        //   child: Container(
-                        //     width: 35,
-                        //     height: 35,
-                        //     decoration:
-                        //     BoxDecoration(borderRadius: BorderRadius.circular(100), color: Colors.red),
-                        //     child: const Icon(Icons.camera_alt_outlined, color: Colors.black, size: 20),
-                        //   ),
-                        // ),
-
                         const SizedBox(height: 10,),
                         Text(
-                          profile.firstname,
+                          userProfile?['name'] ?? 'No Name',
                           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 50),
-                        Form(child: Column(
-                          children: [
-                            buildTextFormField('Firstname', profile.firstname),
-                            buildTextFormField('Lastname', profile.lastname),
-                            buildTextFormField('Email', profile.email),
-                            buildTextFormField('Phone Number', profile.phone),
-                            buildTextFormField('Gender', profile.gender),
-                          ],
-                        )),
+                        TextFormField(
+                          controller: emailController,
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          decoration: InputDecoration(
+                            labelText: "Email", // หัวข้อของช่องป้อนข้อมูล
+                            labelStyle: TextStyle(color: Colors.black, fontSize: 16), // สไตล์ของหัวข้อ
+                            filled: true, // เปิดการเติมสีพื้นหลัง
+                            fillColor: Colors.white, // กำหนดสีพื้นหลังเป็นสีขาว
+                            border: OutlineInputBorder( // ใส่ขอบให้ช่องป้อนข้อมูล
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(color: Colors.grey, width: 1),
+                            ),
+                            focusedBorder: OutlineInputBorder( // ขอบตอนโฟกัส
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(color: Colors.blue, width: 2),
+                            ),
+                            contentPadding: EdgeInsets.symmetric(vertical: 15, horizontal: 10), // จัดระยะห่างภายในช่อง
+                          ),
+                        ),
+                        SizedBox(height: 10),
+                        TextFormField(
+                          controller: userTypeController,
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          readOnly: true,
+                          enabled: false,
+                          decoration: InputDecoration(
+                            labelText: "User Type", // หัวข้อของช่องป้อนข้อมูล
+                            labelStyle: TextStyle(color: Colors.black, fontSize: 16), // สไตล์ของหัวข้อ
+                            filled: true, // เปิดการเติมสีพื้นหลัง
+                            fillColor: Colors.white, // กำหนดสีพื้นหลังเป็นสีขาว
+                            border: OutlineInputBorder( // ใส่ขอบให้ช่องป้อนข้อมูล
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(color: Colors.grey, width: 1),
+                            ),
+                            focusedBorder: OutlineInputBorder( // ขอบตอนโฟกัส
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(color: Colors.blue, width: 2),
+                            ),
+                            contentPadding: EdgeInsets.symmetric(vertical: 15, horizontal: 10), // จัดระยะห่างภายในช่อง
+                          ),
+                        ),
+                        SizedBox(height: 10),
+                        TextFormField(
+                          controller: phoneController,
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          decoration: InputDecoration(
+                            labelText: "Phone", // หัวข้อของช่องป้อนข้อมูล
+                            labelStyle: TextStyle(color: Colors.black, fontSize: 16), // สไตล์ของหัวข้อ
+                            filled: true, // เปิดการเติมสีพื้นหลัง
+                            fillColor: Colors.white, // กำหนดสีพื้นหลังเป็นสีขาว
+                            border: OutlineInputBorder( // ใส่ขอบให้ช่องป้อนข้อมูล
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(color: Colors.grey, width: 1),
+                            ),
+                            focusedBorder: OutlineInputBorder( // ขอบตอนโฟกัส
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(color: Colors.blue, width: 2),
+                            ),
+                            contentPadding: EdgeInsets.symmetric(vertical: 15, horizontal: 10), // จัดระยะห่างภายในช่อง
+                          ),
+                        ),
                         const SizedBox(height: 20,),
                         Padding(
                             padding: const EdgeInsets.only(bottom: 12),
@@ -169,17 +261,4 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
 }
-
-class Profile {
-  final String firstname, lastname, email, phone, gender;
-
-  Profile({
-    required this.firstname,
-    required this.lastname,
-    required this.email,
-    required this.phone,
-    required this.gender,
-  });
-}
-
 
