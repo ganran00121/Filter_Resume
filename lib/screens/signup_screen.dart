@@ -80,6 +80,14 @@ class _SignupScreenState extends State<SignupScreen> with WidgetsBindingObserver
       String? storedToken = await _storage.read(key: 'auth_token'); // เรียก token
       print("login successful - token : $storedToken");
 
+      final Map<String, dynamic> user = data['user'];
+      final String userJson = jsonEncode(user);
+      await _storage.write(key: 'user_data', value: userJson);
+
+      String? storedData = await _storage.read(key: 'user_data');
+
+      print('User data : $storedData');
+
       // Login successful
       // Navigate to MainScreen and remove all previous routes
       Navigator.of(context).pushAndRemoveUntil(
