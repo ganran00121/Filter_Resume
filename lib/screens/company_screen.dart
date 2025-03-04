@@ -34,6 +34,7 @@ class _CompanyScreenState extends State<CompanyScreen> {
   }
 
   Future<Job?> fetchData() async {
+    setState(() => isLoading = true);
     print('FetchData');
     String baseUrl = dotenv.env['BASE_URL'] ?? 'default_url';
     print('API baseUrl: ${baseUrl}');
@@ -90,12 +91,11 @@ class _CompanyScreenState extends State<CompanyScreen> {
         // return job;
       } else {
         print('Failed to load data. Status code: ${response.statusCode}');
-        return null;
       }
     }
     catch (e) {
       print('Error fetching data: $e');
-      return null;
+      setState(() => isLoading = false);
     }
   }
 
@@ -173,13 +173,17 @@ class _CompanyScreenState extends State<CompanyScreen> {
               ),
               SizedBox(height: 35),
               Expanded(
-                child: ListView.builder(
+                child: isLoading
+                    ? Center(
+                        child:
+                          CircularProgressIndicator())
+                    : ListView.builder(
                   itemCount: jobs.length,
                   itemBuilder: (context, index) {
                     return JobCard(job: jobs[index]);
                   },
                 ),
-              ),
+                ),
               Align(
                 alignment: Alignment.bottomRight,
                 child: FloatingActionButton(
@@ -206,10 +210,11 @@ class _CompanyScreenState extends State<CompanyScreen> {
                       ),
                     );
                   },
+                  backgroundColor: Colors.orange,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(100),
                   ),
-                  child: const Icon(Icons.add),
+                  child: const Icon(Icons.add, color: Colors.white, size: 30,),
                 ),
               ),
             ],
@@ -338,15 +343,19 @@ class CompanyCard extends StatelessWidget {
   }
 }
 
-class JobCard extends StatelessWidget {
+class JobCard extends StatefulWidget {
   final Job job;
-
   JobCard({required this.job});
 
+  @override
+  _JobCardState createState() => _JobCardState();
+}
+
+class _JobCardState extends State<JobCard>{
 
   @override
   Widget build(BuildContext context) {
-    _count = job.applicant_count;
+    _count = widget.job.applicant_count;
     return GestureDetector(
       child: Card(
         color: Colors.white,
@@ -363,7 +372,7 @@ class JobCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    job.title,
+                    widget.job.title,
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -373,7 +382,7 @@ class JobCard extends StatelessWidget {
                   ),
                   SizedBox(height: 4),
                   Text(
-                    job.company,
+                    widget.job.company,
                     style: TextStyle(color: Colors.grey[700]),
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
@@ -394,26 +403,26 @@ class JobCard extends StatelessWidget {
                   SizedBox(height: 8),
                   Row(
                     children: [
-                      Expanded(child: _buildInfo(Icons.location_on, job.location)),
+                      Expanded(child: _buildInfo(Icons.location_on, widget.job.location)),
                     ],
                   ),
                   SizedBox(height: 8), // เพิ่มระยะห่างระหว่างบรรทัด
                   Row(
                     children: [
-                      Expanded(child: _buildInfo(Icons.attach_money, job.salaryRange)),
+                      Expanded(child: _buildInfo(Icons.attach_money, widget.job.salaryRange)),
                     ],
                   ),
                   Row(
                     children: [
 
-                      Expanded(child: _buildInfo(Icons.people, job.quantity.toString())),
+                      Expanded(child: _buildInfo(Icons.people, widget.job.quantity.toString())),
 
                     ],
                   ),
                   SizedBox(height: 8), // เพิ่มระยะห่างระหว่างบรรทัด
                   Row(
                     children: [
-                      Expanded(child: _buildInfo(Icons.work, job.jobPosition)),
+                      Expanded(child: _buildInfo(Icons.work, widget.job.jobPosition)),
                     ],
                   ),
                   SizedBox(height: 30),
@@ -433,7 +442,7 @@ class JobCard extends StatelessWidget {
                         children: [
                           ElevatedButton(
                             onPressed: () {
-                              int job_id = job.id;
+                              int job_id = widget.job.id;
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -465,9 +474,19 @@ class JobCard extends StatelessWidget {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                    builder: (context) => JobDetail(job: job)
+                                  builder: (context) => JobDetail(job: widget.job), // Open Job Detail
                                 ),
-                              );
+                              ).then((result) {
+                                if (result == "updated" || result == "deleted") {
+                                  setState(() {
+
+                                  });
+                                  if (context.findAncestorStateOfType<_CompanyScreenState>() != null) {
+                                    context.findAncestorStateOfType<_CompanyScreenState>()!.fetchData();
+
+                                  }
+                                }
+                              });
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Color(0xFFFACACA),
@@ -533,11 +552,34 @@ class JobCard extends StatelessWidget {
 }
 
 // TODO: add detail of company
-class JobDetail extends StatelessWidget {
+class JobDetail extends StatefulWidget {
   final Job job;
   JobDetail({required this.job});
 
-  Future<void> updateJob(int jobId, Job updatedJob) async {
+  @override
+  _JobDetailState createState() => _JobDetailState();
+}
+
+class _JobDetailState extends State<JobDetail> {
+  final TextEditingController _title = TextEditingController();
+  final TextEditingController _location = TextEditingController();
+  final TextEditingController _salary = TextEditingController();
+  final TextEditingController _people = TextEditingController();
+  final TextEditingController _position = TextEditingController();
+  final TextEditingController _description = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _title.text = widget.job.title;
+    _location.text = widget.job.location;
+    _salary.text = widget.job.salaryRange;
+    _people.text = widget.job.quantity.toString();
+    _position.text = widget.job.jobPosition;
+    _description.text = widget.job.description;
+  }
+
+  Future<void> updatePost(int jobId, Job updatedPost) async {
     String baseUrl = dotenv.env['BASE_URL'] ?? 'default_url';
 
     if (!baseUrl.startsWith('http')) {
@@ -556,17 +598,18 @@ class JobDetail extends StatelessWidget {
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
-          "Title": updatedJob.title,
-          "Description": updatedJob.description,
-          "Location": updatedJob.location,
-          "salaryRange": updatedJob.salaryRange,
-          "JobPosition": updatedJob.jobPosition,
-          "Quantity": updatedJob.quantity,
+          "Title": updatedPost.title,
+          "Description": updatedPost.description,
+          "Location": updatedPost.location,
+          "salaryRange": updatedPost.salaryRange,
+          "JobPosition": updatedPost.jobPosition,
+          "Quantity": updatedPost.quantity,
         }),
       );
 
       if (response.statusCode == 200) {
         print('Job updated successfully!');
+        Navigator.pop(context, "updated");
       } else {
         print('Failed to update job. Status code: ${response.statusCode}');
         print('Response: ${response.body}');
@@ -576,17 +619,68 @@ class JobDetail extends StatelessWidget {
     }
   }
 
+  Future<void> showDeleteConfirmationDialog(BuildContext context, int jobId) async {
+    return showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Confirm Deletion"),
+          content: Text("Are you sure you want to delete this job?"),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog
+              },
+              child: Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog
+                deletePost(jobId); // Call delete function
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: Text("Delete", style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> deletePost(int jobId) async {
+    String baseUrl = dotenv.env['BASE_URL'] ?? 'default_url';
+
+    if (!baseUrl.startsWith('http')) {
+      baseUrl = 'https://$baseUrl';
+    }
+
+    Uri apiUri = Uri.parse("$baseUrl/api/jobs/$jobId");
+
+    String? token = await _storage.read(key: 'auth_token');
+
+    try {
+      var response = await http.delete(
+        apiUri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+      if (response.statusCode == 200) {
+        print("Job deleted successfully!");
+        Navigator.pop(context, "deleted");
+      } else {
+        print("Failed to delete job. Status: ${response.statusCode}");
+      }
+    }
+    catch (e) {
+      print("Error deleting job: $e");
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
-
-    _title.text = job.title;
-    _location.text = job.location;
-    _salary.text = job.salaryRange;
-    _people.text = job.quantity.toString();
-    _position.text = job.jobPosition;
-    _description.text = job.description;
-
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -663,7 +757,7 @@ class JobDetail extends StatelessWidget {
                     ),
                     SizedBox(height: 8),
                     Text(
-                      job.company,
+                      widget.job.company,
                       style: TextStyle(
                         fontSize: 16,
                         color: Colors.grey,
@@ -850,22 +944,22 @@ class JobDetail extends StatelessWidget {
                     Center(
                       child: ElevatedButton(
                         onPressed: () async {
-                          Job updatedJob = Job(
-                            id: job.id,
+                          Job updatedPost = Job(
+                            id: widget.job.id,
                             title: _title.text,
                             description: _description.text,
                             location: _location.text,
                             salaryRange: _salary.text,
                             jobPosition: _position.text,
-                            company: job.company,
-                            status: job.status,
-                            quantity: int.tryParse(_people.text) ?? job.quantity,
-                            applicant_count: job.applicant_count,
-                            createdAt: job.createdAt,
+                            company: widget.job.company,
+                            status: widget.job.status,
+                            quantity: int.tryParse(_people.text) ?? widget.job.quantity,
+                            applicant_count: widget.job.applicant_count,
+                            createdAt: widget.job.createdAt,
                             updatedAt: DateTime.now().toString(),
                           );
 
-                          await updateJob(job.id, updatedJob);
+                          await updatePost(widget.job.id, updatedPost);
 
                         },
                         style: ElevatedButton.styleFrom(
@@ -879,7 +973,24 @@ class JobDetail extends StatelessWidget {
                         child: Text("Save Changes", style: TextStyle(color: Colors.deepOrange)),
                       ),
                     ),
+                    SizedBox(height: 24,),
+                    Align(
+                      child: ElevatedButton(
 
+                          onPressed: () {
+                            showDeleteConfirmationDialog(context, widget.job.id);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red[50],
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ) ,
+                          child: Text('Delete', style: TextStyle(color: Colors.red),),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -888,6 +999,16 @@ class JobDetail extends StatelessWidget {
         ),
       ),
     );
+  }
+  @override
+  void dispose() {
+    _title.dispose();
+    _location.dispose();
+    _salary.dispose();
+    _people.dispose();
+    _position.dispose();
+    _description.dispose();
+    super.dispose();
   }
 }
 
