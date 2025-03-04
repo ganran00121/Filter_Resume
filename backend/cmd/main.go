@@ -48,16 +48,24 @@ func main() {
 		log.Fatal(errorWrapper)
 	}
 
-	err = db.AutoMigrate(
-		&authmodel.User{},
-		&authmodel.CompanyProfile{},
-		&authmodel.Message{},
-		&authmodel.Notification{},
-		&jobmodel.JobPost{},
-		&jobmodel.JobApplication{},
-		&jobmodel.SavedJob{},
-		&jobmodel.Message{},
-	)
+	if !db.Migrator().HasTable(&authmodel.User{}) {
+		log.Println("Tables do not exist. Running AutoMigrate...")
+		err = db.AutoMigrate(
+			&authmodel.User{},
+			&authmodel.Message{},
+			&authmodel.Notification{},
+			&jobmodel.JobPost{},
+			&jobmodel.JobApplication{},
+			&jobmodel.SavedJob{},
+			&jobmodel.Message{},
+		)
+		if err != nil {
+			log.Fatal("failed to auto migrate:", err)
+		}
+		log.Println("AutoMigrate completed.")
+	} else {
+		log.Println("Tables already exist. Skipping AutoMigrate.")
+	}
 	// mockdata.InsertMockData(db)
 	// --- Service Initialization ---
 	authService := authservice.NewAuthService(db)

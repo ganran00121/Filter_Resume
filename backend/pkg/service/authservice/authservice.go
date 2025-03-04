@@ -65,7 +65,7 @@ func (s *AuthService) Login(loginRequest *authmodel.LoginRequest) (string, error
 	// }
 
 	// สร้าง JWT token
-	token, err := generateJWTToken(user.ID)
+	token, err := generateJWTToken(&user)
 	if err != nil {
 		return "", err
 	}
@@ -74,11 +74,16 @@ func (s *AuthService) Login(loginRequest *authmodel.LoginRequest) (string, error
 }
 
 // ฟังก์ชันสำหรับการสร้าง JWT Token
-func generateJWTToken(userID uint) (string, error) {
+func generateJWTToken(user *authmodel.User) (string, error) {
 	// กำหนดข้อมูลใน Token
 	claims := jwt.MapClaims{
-		"user_id": userID,
-		"exp":     time.Now().Add(time.Hour * 24).Unix(), // กำหนดเวลา Expire เป็น 1 วัน
+		"user_id":      user.ID,
+		"name":         user.Name,
+		"email":        user.Email,
+		"phone":        user.Phone,
+		"user_type":    user.UserType,
+		"company_name": user.CompanyName,                      // Handle potential nil pointer
+		"exp":          time.Now().Add(time.Hour * 24).Unix(), // Token expires in 24 hours
 	}
 
 	// สร้าง JWT Token ด้วยการเข้ารหัส

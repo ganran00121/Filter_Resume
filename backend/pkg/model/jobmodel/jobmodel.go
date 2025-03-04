@@ -21,7 +21,6 @@ type SavedJob struct {
 	UpdatedAt time.Time
 	User      authmodel.User `gorm:"foreignKey:UserID"` //For preloading
 	JobPost   JobPost        `gorm:"foreignKey:JobID"`  //For preloading
-
 }
 
 type JobPost struct {
