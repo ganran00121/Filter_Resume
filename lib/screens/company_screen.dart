@@ -4,6 +4,7 @@ import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'chat_company_screen.dart';
 
 
 class CompanyScreen extends StatefulWidget {
@@ -182,7 +183,29 @@ class _CompanyScreenState extends State<CompanyScreen> {
               Align(
                 alignment: Alignment.bottomRight,
                 child: FloatingActionButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => CreatePost(
+                            job: Job(
+                              id: 0, // Default ID
+                              title: "",
+                              description: "",
+                              location: "",
+                              salaryRange: "",
+                              jobPosition: "",
+                              company: "",
+                              status: true,
+                              quantity: 0,
+                              applicant_count: 0,
+                              createdAt: "",
+                              updatedAt: "",
+                            ),
+                          )
+                      ),
+                    );
+                  },
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(100),
                   ),
@@ -410,8 +433,13 @@ class JobCard extends StatelessWidget {
                         children: [
                           ElevatedButton(
                             onPressed: () {
-
-                            },
+                              int job_id = job.id;
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ChatScreen(id: job_id),
+                                ),
+                              );                            },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Color(0xFFCADDFA),
                               padding: EdgeInsets.symmetric(
@@ -861,5 +889,374 @@ class JobDetail extends StatelessWidget {
       ),
     );
   }
+}
 
+// TODO: add detail of company
+class CreatePost extends StatelessWidget{
+  final Job job;
+
+  CreatePost({required this.job});
+
+  Future<void> createJob(int jobId, Job updatedJob) async {
+    String baseUrl = dotenv.env['BASE_URL'] ?? 'default_url';
+
+    if (!baseUrl.startsWith('http')) {
+      baseUrl = 'https://$baseUrl';
+    }
+
+    print('API baseUrl: ${baseUrl}');
+    int? id;
+
+
+    String? token = await _storage.read(key: 'auth_token');
+    String? userData = await _storage.read(key: 'user_data');
+    print("userData : $userData");
+
+    if (userData != null){
+      Map<String, dynamic> userMap = json.decode(userData);
+      id = userMap['id'];
+      print(id);
+    } else {
+      print('No user data found.');
+    }
+
+    Uri apiUri = Uri.parse("$baseUrl/api/jobs");
+
+
+    try {
+      var response = await http.post(
+        apiUri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          "UserID" : id,
+          "Title": updatedJob.title,
+          "Description": updatedJob.description,
+          "Location": updatedJob.location,
+          "salaryRange": updatedJob.salaryRange,
+          "JobPosition": updatedJob.jobPosition,
+          "Quantity": updatedJob.quantity,
+          "Status": true
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print('Job create successfully!');
+
+      } else {
+        print('Failed to update job. Status code: ${response.statusCode}');
+        print('Response: ${response.body}');
+      }
+    } catch (e) {
+      print('Error updating job: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // TODO: implement build
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          onPressed: () => Navigator.of(context).pop(),
+          icon: Icon(Icons.arrow_back_ios,
+            color: Colors.white,
+          ),
+        ),
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                Image.asset(
+                  "assets/images/opendurian.png",
+                  // job.image,
+                  width: double.infinity,
+                  height: 200,
+                  fit: BoxFit.cover,
+                ),
+                Container(
+                  width: double.infinity,
+                  height: 200,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withOpacity(0.7),
+                        Colors.transparent
+                      ], // เพิ่ม opacity ให้สี orange
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Container(
+              color: Colors.white, // เปลี่ยนสีพื้นหลังที่ต้องการ
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 23),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Container(
+                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: TextField(
+                              controller: _title,
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              maxLines: 1,
+                              decoration: InputDecoration(
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.zero,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      job.company,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Icon(Icons.location_on, size: 18, color: Colors.orange),
+                        SizedBox(width: 4),
+                        Expanded(
+                          flex: 2,
+                          child: Container(
+                            padding: EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: TextField(
+                              controller: _location,
+                              style: TextStyle(
+                                fontSize: 16,
+                              ),
+                              decoration: InputDecoration(
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.zero,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 1,
+                          child: Column(
+                            children: [
+                              // Image.asset(job.image, height: 100, width: 100, fit: BoxFit.cover,)
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(Icons.attach_money,
+                            size: 18, color: Colors.orange),
+                        SizedBox(width: 4),
+                        Expanded(
+                          flex: 2,
+                          child: Container(
+                            padding: EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: TextField(
+                              controller: _salary,
+                              style: TextStyle(
+                                fontSize: 16,
+                              ),
+                              decoration: InputDecoration(
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.zero,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 1,
+                          child: Column(
+                            children: [
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(Icons.people, size: 18, color: Colors.orange),
+                        SizedBox(width: 4),
+                        Expanded(
+                          flex: 2,
+                          child: Container(
+                            padding: EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: TextField(
+                              controller: _people,
+                              style: TextStyle(
+                                fontSize: 16,
+                              ),
+                              decoration: InputDecoration(
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.zero,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 1,
+                          child: Column(
+                            children: [
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(Icons.work, size: 18, color: Colors.orange),
+                        SizedBox(width: 4),
+                        Expanded(
+                          flex: 2,
+                          child: Container(
+                            padding: EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: TextField(
+                              controller: _position,
+                              style: TextStyle(
+                                fontSize: 16,
+                              ),
+                              decoration: InputDecoration(
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.zero,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 1,
+                          child: Column(
+                            children: [
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      "Posted 13 ชั่วโมงทีผ่านมา",
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey,
+                      ),
+                    ),
+
+                    SizedBox(height: 16),
+                    Container(
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Job Description",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          TextField(
+                            controller: _description,
+                            maxLines: null, // Allow multiline
+                            style: TextStyle(fontSize: 16, color: Colors.black87),
+                            decoration: InputDecoration(
+                              border: InputBorder.none,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 24,),
+                    Center(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          Job updatedJob = Job(
+                            id: job.id,
+                            title: _title.text,
+                            description: _description.text,
+                            location: _location.text,
+                            salaryRange: _salary.text,
+                            jobPosition: _position.text,
+                            company: job.company,
+                            status: job.status,
+                            quantity: int.tryParse(_people.text) ?? job.quantity,
+                            applicant_count: job.applicant_count,
+                            createdAt: job.createdAt,
+                            updatedAt: DateTime.now().toString(),
+                          );
+
+                          await createJob(job.id, updatedJob);
+
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange[50],
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: Text("Create", style: TextStyle(color: Colors.deepOrange)),
+                      ),
+                    ),
+
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

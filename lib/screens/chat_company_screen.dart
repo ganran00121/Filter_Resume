@@ -13,11 +13,16 @@ class Chat {
 }
 
 
+
 class ChatScreen extends StatelessWidget {
+  final int id;
+  ChatScreen({required this.id});
+
   final List<Chat> chats = [
     Chat(name: "ThaiBev", image: "assets/images/thaibev.png"),
     Chat(name: "Thai Beverage Plc", image: "assets/images/thaibev.png"),
   ];
+
 
   // @override
   // void didChangeAppLifecycleState(AppLifecycleState state) {
