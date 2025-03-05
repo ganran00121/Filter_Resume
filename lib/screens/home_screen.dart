@@ -67,11 +67,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           jobs = fetchedJobs;
           isLoading = false;
         });
-      } else if(response.statusCode == 401){
+      } else if (response.statusCode == 401) {
         Map<String, String> user = await _storage.readAll();
         print("userinfo : ${user}");
 
-        throw Exception('Failed to load jobs');
+        throw Exception('Failed to load jobs : (${response.statusCode})');
+      } else {
+        throw Exception('Failed to load jobs : (${response.statusCode})');
       }
     } catch (e) {
       print('Error fetching jobs: $e');
@@ -107,12 +109,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     ? Center(
                         child:
                             CircularProgressIndicator()) // แสดงตัวหมุนเมื่อโหลด
-                    : ListView.builder(
-                        itemCount: jobs.length,
-                        itemBuilder: (context, index) {
-                          return JobCard(job: jobs[index]);
-                        },
-                      ),
+                    : jobs == null
+                        ? Center(
+                            child: Text(
+                                "Failed to load jobs or no job at the moment."), // แสดงข้อความเมื่อ jobs เป็น null
+                          )
+                        : ListView.builder(
+                            itemCount: jobs!
+                                .length, // ใช้ jobs!.length เพื่อบอกว่า jobs ไม่ใช่ null
+                            itemBuilder: (context, index) {
+                              return JobCard(
+                                  job: jobs![
+                                      index]); // ใช้ jobs![index] เพื่อบอกว่า jobs ไม่ใช่ null
+                            },
+                          ),
               ),
             ],
           ),
@@ -292,10 +302,16 @@ class JobCard extends StatelessWidget {
   }
 }
 
-class JobDetailScreen extends StatelessWidget {
+class JobDetailScreen extends StatefulWidget {
   final Job job;
-
   JobDetailScreen({required this.job});
+
+  @override
+  _JobDetailScreenState createState() => _JobDetailScreenState();
+}
+
+class _JobDetailScreenState extends State<JobDetailScreen> {
+
 
   @override
   Widget build(BuildContext context) {
@@ -349,7 +365,7 @@ class JobDetailScreen extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            job.title,
+                            widget.job.title,
                             style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
@@ -375,7 +391,7 @@ class JobDetailScreen extends StatelessWidget {
                     ),
                     SizedBox(height: 8),
                     Text(
-                      job.title,
+                      widget.job.title,
                       style: TextStyle(
                         fontSize: 16,
                         color: Colors.grey,
@@ -387,7 +403,7 @@ class JobDetailScreen extends StatelessWidget {
                         Icon(Icons.location_on, size: 18, color: Colors.orange),
                         SizedBox(width: 4),
                         Text(
-                          job.location,
+                          widget.job.location,
                           style: TextStyle(fontSize: 16),
                         ),
                       ],
@@ -399,7 +415,7 @@ class JobDetailScreen extends StatelessWidget {
                             size: 18, color: Colors.orange),
                         SizedBox(width: 4),
                         Text(
-                          job.salaryRange,
+                          widget.job.salaryRange,
                           style: TextStyle(fontSize: 16),
                         ),
                       ],
@@ -410,7 +426,7 @@ class JobDetailScreen extends StatelessWidget {
                         Icon(Icons.people, size: 18, color: Colors.orange),
                         SizedBox(width: 4),
                         Text(
-                          job.quantity.toString(),
+                          widget.job.quantity.toString(),
                           style: TextStyle(fontSize: 16),
                         ),
                       ],
@@ -421,7 +437,7 @@ class JobDetailScreen extends StatelessWidget {
                         Icon(Icons.work, size: 18, color: Colors.orange),
                         SizedBox(width: 4),
                         Text(
-                          job.jobPosition,
+                          widget.job.jobPosition,
                           style: TextStyle(fontSize: 16),
                         ),
                       ],
@@ -446,9 +462,13 @@ class JobDetailScreen extends StatelessWidget {
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) =>
-                                      UploadResumeScreen(job.id),
+                                      UploadResumeScreen( widget.job.id),
                                 ),
-                              );
+                              ).then((result) {
+                                if (result == 'success') {
+                                  setState(() { });
+                                }
+                              });
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.orange,
@@ -487,7 +507,7 @@ class JobDetailScreen extends StatelessWidget {
                     ),
                     SizedBox(height: 16),
                     Text(
-                      job.description,
+                      widget.job.description,
                       style: TextStyle(
                         fontSize: 16,
                         color: Colors.grey,
@@ -558,14 +578,13 @@ class _UploadResumeScreenState extends State<UploadResumeScreen> {
 
     var response = await request.send();
 
-
     if (!mounted) return;
 
     setState(() {
       isLoading = false;
       if (response.statusCode == 200 || response.statusCode == 201) {
         uploadStatusMessage = "✅ อัปโหลดสำเร็จ!";
-        
+        Navigator.pop(this.context, "success");
       } else {
         uploadStatusMessage = "❌ อัปโหลดไม่สำเร็จ (${response.statusCode})";
       }
@@ -586,83 +605,83 @@ class _UploadResumeScreenState extends State<UploadResumeScreen> {
         iconTheme: IconThemeData(color: Colors.black),
       ),
       body: Container(
-      color: Colors.white,
+        color: Colors.white,
         child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            mainAxisAlignment:
-                MainAxisAlignment.center, // จัดให้อยู่ตรงกลางแนวตั้ง
-            crossAxisAlignment:
-                CrossAxisAlignment.center, // จัดให้อยู่ตรงกลางแนวนอน
-            children: [
-              Text(
-                "Upload file Resume",
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 20),
-              GestureDetector(
-                onTap: pickFile,
-                child: Container(
-                  width: double.infinity,
-                  height: 400,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.upload_file,
-                            size: 40, color: Colors.grey[700]),
-                        SizedBox(height: 10),
-                        Text(
-                          fileName ?? "Upload file\n(รองรับเฉพาะ PDF)",
-                          textAlign: TextAlign.center,
-                          style:
-                              TextStyle(fontSize: 16, color: Colors.grey[700]),
-                        ),
-                      ],
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisAlignment:
+                  MainAxisAlignment.center, // จัดให้อยู่ตรงกลางแนวตั้ง
+              crossAxisAlignment:
+                  CrossAxisAlignment.center, // จัดให้อยู่ตรงกลางแนวนอน
+              children: [
+                Text(
+                  "Upload file Resume",
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 20),
+                GestureDetector(
+                  onTap: pickFile,
+                  child: Container(
+                    width: double.infinity,
+                    height: 400,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.upload_file,
+                              size: 40, color: Colors.grey[700]),
+                          SizedBox(height: 10),
+                          Text(
+                            fileName ?? "Upload file\n(รองรับเฉพาะ PDF)",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                fontSize: 16, color: Colors.grey[700]),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-              SizedBox(height: 30),
-              ElevatedButton(
-                onPressed:
-                    selectedFile != null && !isLoading ? uploadFile : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
-                  padding: EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                SizedBox(height: 30),
+                ElevatedButton(
+                  onPressed:
+                      selectedFile != null && !isLoading ? uploadFile : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    padding: EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    minimumSize: Size(double.infinity, 50),
                   ),
-                  minimumSize: Size(double.infinity, 50),
+                  child: isLoading
+                      ? CircularProgressIndicator(color: Colors.white)
+                      : Text(
+                          "Submit",
+                          style: TextStyle(fontSize: 16, color: Colors.white),
+                        ),
                 ),
-                child: isLoading
-                    ? CircularProgressIndicator(color: Colors.white)
-                    : Text(
-                        "Submit",
-                        style: TextStyle(fontSize: 16, color: Colors.white),
-                      ),
-              ),
-              if (uploadStatusMessage != null) ...[
-                SizedBox(height: 20),
-                Text(
-                  uploadStatusMessage!,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: uploadStatusMessage!.contains("✅")
-                        ? Colors.green
-                        : Colors.red,
+                if (uploadStatusMessage != null) ...[
+                  SizedBox(height: 20),
+                  Text(
+                    uploadStatusMessage!,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: uploadStatusMessage!.contains("✅")
+                          ? Colors.green
+                          : Colors.red,
+                    ),
                   ),
-                ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }

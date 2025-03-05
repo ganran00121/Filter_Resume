@@ -6,7 +6,6 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'chat_company_screen.dart';
 
-
 class CompanyScreen extends StatefulWidget {
   @override
   _CompanyScreenState createState() => _CompanyScreenState();
@@ -21,11 +20,13 @@ final TextEditingController _position = TextEditingController();
 final TextEditingController _description = TextEditingController();
 int _count = 0;
 
+
 final quill.QuillController _controller = quill.QuillController.basic();
 
 class _CompanyScreenState extends State<CompanyScreen> {
   List<Job> jobs = [];
   bool isLoading = true;
+  String companyName = '';
 
   @override
   void initState() {
@@ -34,19 +35,23 @@ class _CompanyScreenState extends State<CompanyScreen> {
   }
 
   Future<Job?> fetchData() async {
+    setState(() => isLoading = true);
     print('FetchData');
     String baseUrl = dotenv.env['BASE_URL'] ?? 'default_url';
     print('API baseUrl: ${baseUrl}');
     int? id;
 
+
     String? token = await _storage.read(key: 'auth_token');
     String? userData = await _storage.read(key: 'user_data');
     print("userData : $userData");
 
-    if (userData != null){
+    if (userData != null) {
       Map<String, dynamic> userMap = json.decode(userData);
       id = userMap['id'];
+      companyName = userMap['company_name'] ?? 'Unknown Company';
       print(id);
+      print(companyName);
     } else {
       print('No user data found.');
     }
@@ -55,9 +60,8 @@ class _CompanyScreenState extends State<CompanyScreen> {
       baseUrl = 'https://$baseUrl';
     }
 
-    Uri apiUri = Uri.parse(baseUrl).replace(path: '${Uri
-        .parse(baseUrl)
-        .path}/api/jobs/user/$id'); //
+    Uri apiUri = Uri.parse(baseUrl)
+        .replace(path: '${Uri.parse(baseUrl).path}/api/jobs/user/$id'); //
     print("URL : ${apiUri}");
     // ยิง API
     try {
@@ -71,7 +75,6 @@ class _CompanyScreenState extends State<CompanyScreen> {
       if (response.statusCode == 200) {
         // Decode the JSON response
         List<dynamic> jsonData = json.decode(response.body);
-
         print('Json data : $jsonData');
 
 
@@ -82,7 +85,6 @@ class _CompanyScreenState extends State<CompanyScreen> {
           jobs = fetchedJobs;
           isLoading = false;
         });
-
         // _test.text = job.title;
         //
         // print('API Response: ${jsonData}');
@@ -90,16 +92,12 @@ class _CompanyScreenState extends State<CompanyScreen> {
         // return job;
       } else {
         print('Failed to load data. Status code: ${response.statusCode}');
-        return null;
       }
-    }
-    catch (e) {
+    } catch (e) {
       print('Error fetching data: $e');
-      return null;
+      setState(() => isLoading = false);
     }
   }
-
-
 
   final List<Company> companies = [
     Company(
@@ -163,7 +161,7 @@ class _CompanyScreenState extends State<CompanyScreen> {
                     SizedBox(height: 10),
                     Text(
                       companies.isNotEmpty
-                          ? companies.first.name
+                          ? companyName.toString()
                           : "No Company",
                       style:
                           TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
@@ -173,13 +171,15 @@ class _CompanyScreenState extends State<CompanyScreen> {
               ),
               SizedBox(height: 35),
               Expanded(
-                child: ListView.builder(
+                child: isLoading
+                    ? Center(child: CircularProgressIndicator())
+                    : ListView.builder(
                   itemCount: jobs.length,
                   itemBuilder: (context, index) {
                     return JobCard(job: jobs[index]);
                   },
                 ),
-              ),
+                ),
               Align(
                 alignment: Alignment.bottomRight,
                 child: FloatingActionButton(
@@ -206,10 +206,11 @@ class _CompanyScreenState extends State<CompanyScreen> {
                       ),
                     );
                   },
+                  backgroundColor: Colors.orange,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(100),
                   ),
-                  child: const Icon(Icons.add),
+                  child: const Icon(Icons.add, color: Colors.white, size: 30,),
                 ),
               ),
             ],
@@ -261,22 +262,20 @@ class Job {
 
   factory Job.fromJson(Map<String, dynamic> json) {
     return Job(
-      id: json['id'] ?? 0,  // แก้จาก 'ID' เป็น 'id' และใช้ ?? 0 กัน null
+      id: json['id'] ?? 0, // แก้จาก 'ID' เป็น 'id' และใช้ ?? 0 กัน null
       company: json['company_name'] ?? '',
       title: json['title'] ?? '',
       description: json['description'] ?? '',
       location: json['location'] ?? '',
       salaryRange: json['salary_range'] ?? '',
-      quantity: json['quantity'] ?? 0,  // ใช้ ?? 0 กัน null
+      quantity: json['quantity'] ?? 0, // ใช้ ?? 0 กัน null
       jobPosition: json['job_position'] ?? '',
-      status: json['status'] ?? false,  // ถ้า null ให้เป็น false
+      status: json['status'] ?? false, // ถ้า null ให้เป็น false
       createdAt: json['created_at'] ?? '',
       applicant_count: json['applicant_count'] ?? '',
       updatedAt: json['updated_at'] ?? '',
     );
   }
-
-
 }
 
 class CompanyCard extends StatelessWidget {
@@ -338,15 +337,18 @@ class CompanyCard extends StatelessWidget {
   }
 }
 
-class JobCard extends StatelessWidget {
+class JobCard extends StatefulWidget {
   final Job job;
-
   JobCard({required this.job});
 
+  @override
+  _JobCardState createState() => _JobCardState();
+}
 
+class _JobCardState extends State<JobCard> {
   @override
   Widget build(BuildContext context) {
-    _count = job.applicant_count;
+    _count = widget.job.applicant_count;
     return GestureDetector(
       child: Card(
         color: Colors.white,
@@ -363,7 +365,7 @@ class JobCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    job.title,
+                    widget.job.title,
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -373,7 +375,7 @@ class JobCard extends StatelessWidget {
                   ),
                   SizedBox(height: 4),
                   Text(
-                    job.company,
+                    widget.job.company,
                     style: TextStyle(color: Colors.grey[700]),
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
@@ -394,26 +396,32 @@ class JobCard extends StatelessWidget {
                   SizedBox(height: 8),
                   Row(
                     children: [
-                      Expanded(child: _buildInfo(Icons.location_on, job.location)),
+                      Expanded(
+                          child: _buildInfo(
+                              Icons.location_on, widget.job.location)),
                     ],
                   ),
                   SizedBox(height: 8), // เพิ่มระยะห่างระหว่างบรรทัด
                   Row(
                     children: [
-                      Expanded(child: _buildInfo(Icons.attach_money, job.salaryRange)),
+                      Expanded(
+                          child: _buildInfo(
+                              Icons.attach_money, widget.job.salaryRange)),
                     ],
                   ),
                   Row(
                     children: [
-
-                      Expanded(child: _buildInfo(Icons.people, job.quantity.toString())),
-
+                      Expanded(
+                          child: _buildInfo(
+                              Icons.people, widget.job.quantity.toString())),
                     ],
                   ),
                   SizedBox(height: 8), // เพิ่มระยะห่างระหว่างบรรทัด
                   Row(
                     children: [
-                      Expanded(child: _buildInfo(Icons.work, job.jobPosition)),
+                      Expanded(
+                          child:
+                              _buildInfo(Icons.work, widget.job.jobPosition)),
                     ],
                   ),
                   SizedBox(height: 30),
@@ -433,13 +441,18 @@ class JobCard extends StatelessWidget {
                         children: [
                           ElevatedButton(
                             onPressed: () {
-                              int job_id = job.id;
+                              int job_id = widget.job.id;
+                              String Job_name = widget.job.title;
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => ChatScreen(id: job_id),
+                                  builder: (context) => ChatScreen(
+                                    job_id: job_id,
+                                    job_name: Job_name,
+                                  ),
                                 ),
-                              );                            },
+                              );
+                            },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Color(0xFFCADDFA),
                               padding: EdgeInsets.symmetric(
@@ -448,13 +461,14 @@ class JobCard extends StatelessWidget {
                               shape: RoundedRectangleBorder(
                                 // เพิ่ม shape
                                 borderRadius:
-                                BorderRadius.circular(8.0), // กำหนดมุมโค้ง
+                                    BorderRadius.circular(8.0), // กำหนดมุมโค้ง
                               ),
                             ),
-                            child: Text("ตรวจสอบ",
+                            child: Text(
+                              "ตรวจสอบ",
                               style: TextStyle(
                                 color: Color(0xFF0065FF), // กำหนดสี
-                                fontSize: 14.0,           // กำหนดขนาดตัวอักษร
+                                fontSize: 14.0, // กำหนดขนาดตัวอักษร
                                 // fontWeight: FontWeight.w600, // ทำให้ตัวอักษรหนา
                               ),
                             ),
@@ -465,9 +479,23 @@ class JobCard extends StatelessWidget {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                    builder: (context) => JobDetail(job: job)
+                                  builder: (context) => JobDetail(
+                                      job: widget.job), // Open Job Detail
                                 ),
-                              );
+                              ).then((result) {
+                                if (result == "updated" ||
+                                    result == "deleted") {
+                                  setState(() {});
+                                  if (context.findAncestorStateOfType<
+                                          _CompanyScreenState>() !=
+                                      null) {
+                                    context
+                                        .findAncestorStateOfType<
+                                            _CompanyScreenState>()!
+                                        .fetchData();
+                                  }
+                                }
+                              });
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Color(0xFFFACACA),
@@ -477,13 +505,11 @@ class JobCard extends StatelessWidget {
                               shape: RoundedRectangleBorder(
                                 // เพิ่ม shape
                                 borderRadius:
-                                BorderRadius.circular(8.0), // กำหนดมุมโค้ง
+                                    BorderRadius.circular(8.0), // กำหนดมุมโค้ง
                               ),
                             ),
                             child: Text("แก้ไข",
-                                style: TextStyle(
-                                    color: Color(0xFFFF0000))
-                            ),
+                                style: TextStyle(color: Color(0xFFFF0000))),
                           ),
                         ],
                       ),
@@ -512,7 +538,6 @@ class JobCard extends StatelessWidget {
     );
   }
 
-
   Widget _buildInfo(IconData icon, String text) {
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -533,11 +558,34 @@ class JobCard extends StatelessWidget {
 }
 
 // TODO: add detail of company
-class JobDetail extends StatelessWidget {
+class JobDetail extends StatefulWidget {
   final Job job;
   JobDetail({required this.job});
 
-  Future<void> updateJob(int jobId, Job updatedJob) async {
+  @override
+  _JobDetailState createState() => _JobDetailState();
+}
+
+class _JobDetailState extends State<JobDetail> {
+  final TextEditingController _title = TextEditingController();
+  final TextEditingController _location = TextEditingController();
+  final TextEditingController _salary = TextEditingController();
+  final TextEditingController _people = TextEditingController();
+  final TextEditingController _position = TextEditingController();
+  final TextEditingController _description = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _title.text = widget.job.title;
+    _location.text = widget.job.location;
+    _salary.text = widget.job.salaryRange;
+    _people.text = widget.job.quantity.toString();
+    _position.text = widget.job.jobPosition;
+    _description.text = widget.job.description;
+  }
+
+  Future<void> updatePost(int jobId, Job updatedPost) async {
     String baseUrl = dotenv.env['BASE_URL'] ?? 'default_url';
 
     if (!baseUrl.startsWith('http')) {
@@ -556,17 +604,18 @@ class JobDetail extends StatelessWidget {
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
-          "Title": updatedJob.title,
-          "Description": updatedJob.description,
-          "Location": updatedJob.location,
-          "salaryRange": updatedJob.salaryRange,
-          "JobPosition": updatedJob.jobPosition,
-          "Quantity": updatedJob.quantity,
+          "Title": updatedPost.title,
+          "Description": updatedPost.description,
+          "Location": updatedPost.location,
+          "salaryRange": updatedPost.salaryRange,
+          "JobPosition": updatedPost.jobPosition,
+          "Quantity": updatedPost.quantity,
         }),
       );
 
       if (response.statusCode == 200) {
         print('Job updated successfully!');
+        Navigator.pop(context, "updated");
       } else {
         print('Failed to update job. Status code: ${response.statusCode}');
         print('Response: ${response.body}');
@@ -576,27 +625,78 @@ class JobDetail extends StatelessWidget {
     }
   }
 
+  Future<void> showDeleteConfirmationDialog(
+      BuildContext context, int jobId) async {
+    return showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Confirm Deletion"),
+          content: Text("Are you sure you want to delete this job?"),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog
+              },
+              child: Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog
+                deletePost(jobId); // Call delete function
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: Text("Delete", style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> deletePost(int jobId) async {
+    String baseUrl = dotenv.env['BASE_URL'] ?? 'default_url';
+
+    if (!baseUrl.startsWith('http')) {
+      baseUrl = 'https://$baseUrl';
+    }
+
+    Uri apiUri = Uri.parse("$baseUrl/api/jobs/$jobId");
+
+    String? token = await _storage.read(key: 'auth_token');
+
+    try {
+      var response = await http.delete(
+        apiUri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+      if (response.statusCode == 200) {
+        print("Job deleted successfully!");
+        Navigator.pop(context, "deleted");
+      } else {
+        print("Failed to delete job. Status: ${response.statusCode}");
+      }
+    } catch (e) {
+      print("Error deleting job: $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-
-    _title.text = job.title;
-    _location.text = job.location;
-    _salary.text = job.salaryRange;
-    _people.text = job.quantity.toString();
-    _position.text = job.jobPosition;
-    _description.text = job.description;
-
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: Icon(Icons.arrow_back_ios,
+          onPressed: () => Navigator.of(context).pop(),
+          icon: Icon(
+            Icons.arrow_back_ios,
             color: Colors.white,
-            ),
+          ),
         ),
       ),
       body: SingleChildScrollView(
@@ -631,7 +731,8 @@ class JobDetail extends StatelessWidget {
             Container(
               color: Colors.white, // เปลี่ยนสีพื้นหลังที่ต้องการ
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 23),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 25, vertical: 23),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -640,7 +741,8 @@ class JobDetail extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Container(
-                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
                               color: Colors.grey[200],
                               borderRadius: BorderRadius.circular(20),
@@ -663,7 +765,7 @@ class JobDetail extends StatelessWidget {
                     ),
                     SizedBox(height: 8),
                     Text(
-                      job.company,
+                      widget.job.company,
                       style: TextStyle(
                         fontSize: 16,
                         color: Colors.grey,
@@ -677,30 +779,30 @@ class JobDetail extends StatelessWidget {
                         Expanded(
                           flex: 2,
                           child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: TextField(
-                            controller: _location,
-                            style: TextStyle(
-                              fontSize: 16,
+                            padding: EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(20),
                             ),
-                            decoration: InputDecoration(
-                              border: InputBorder.none,
-                              contentPadding: EdgeInsets.zero,
+                            child: TextField(
+                              controller: _location,
+                              style: TextStyle(
+                                fontSize: 16,
+                              ),
+                              decoration: InputDecoration(
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.zero,
+                              ),
                             ),
                           ),
-                        ),
                         ),
                         Expanded(
                           flex: 1,
-                            child: Column(
-                              children: [
-                                // Image.asset(job.image, height: 100, width: 100, fit: BoxFit.cover,)
-                              ],
-                            ),
+                          child: Column(
+                            children: [
+                              // Image.asset(job.image, height: 100, width: 100, fit: BoxFit.cover,)
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -733,8 +835,7 @@ class JobDetail extends StatelessWidget {
                         Expanded(
                           flex: 1,
                           child: Column(
-                            children: [
-                            ],
+                            children: [],
                           ),
                         ),
                       ],
@@ -767,8 +868,7 @@ class JobDetail extends StatelessWidget {
                         Expanded(
                           flex: 1,
                           child: Column(
-                            children: [
-                            ],
+                            children: [],
                           ),
                         ),
                       ],
@@ -801,8 +901,7 @@ class JobDetail extends StatelessWidget {
                         Expanded(
                           flex: 1,
                           child: Column(
-                            children: [
-                            ],
+                            children: [],
                           ),
                         ),
                       ],
@@ -815,7 +914,6 @@ class JobDetail extends StatelessWidget {
                         color: Colors.grey,
                       ),
                     ),
-
                     SizedBox(height: 16),
                     Container(
                       padding: EdgeInsets.all(12),
@@ -837,7 +935,8 @@ class JobDetail extends StatelessWidget {
                           TextField(
                             controller: _description,
                             maxLines: null, // Allow multiline
-                            style: TextStyle(fontSize: 16, color: Colors.black87),
+                            style:
+                                TextStyle(fontSize: 16, color: Colors.black87),
                             decoration: InputDecoration(
                               border: InputBorder.none,
                               contentPadding: EdgeInsets.zero,
@@ -846,40 +945,66 @@ class JobDetail extends StatelessWidget {
                         ],
                       ),
                     ),
-                    SizedBox(height: 24,),
+                    SizedBox(
+                      height: 24,
+                    ),
                     Center(
                       child: ElevatedButton(
                         onPressed: () async {
-                          Job updatedJob = Job(
-                            id: job.id,
+                          Job updatedPost = Job(
+                            id: widget.job.id,
                             title: _title.text,
                             description: _description.text,
                             location: _location.text,
                             salaryRange: _salary.text,
                             jobPosition: _position.text,
-                            company: job.company,
-                            status: job.status,
-                            quantity: int.tryParse(_people.text) ?? job.quantity,
-                            applicant_count: job.applicant_count,
-                            createdAt: job.createdAt,
+                            company: widget.job.company,
+                            status: widget.job.status,
+                            quantity: int.tryParse(_people.text) ??
+                                widget.job.quantity,
+                            applicant_count: widget.job.applicant_count,
+                            createdAt: widget.job.createdAt,
                             updatedAt: DateTime.now().toString(),
                           );
 
-                          await updateJob(job.id, updatedJob);
-
+                          await updatePost(widget.job.id, updatedPost);
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.orange[50],
                           foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 12),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
-                        child: Text("Save Changes", style: TextStyle(color: Colors.deepOrange)),
+                        child: Text("Save Changes",
+                            style: TextStyle(color: Colors.deepOrange)),
                       ),
                     ),
-
+                    SizedBox(
+                      height: 24,
+                    ),
+                    Align(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          showDeleteConfirmationDialog(context, widget.job.id);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red[50],
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: Text(
+                          'Delete',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -889,10 +1014,21 @@ class JobDetail extends StatelessWidget {
       ),
     );
   }
+
+  @override
+  void dispose() {
+    _title.dispose();
+    _location.dispose();
+    _salary.dispose();
+    _people.dispose();
+    _position.dispose();
+    _description.dispose();
+    super.dispose();
+  }
 }
 
 // TODO: add detail of company
-class CreatePost extends StatelessWidget{
+class CreatePost extends StatelessWidget {
   final Job job;
 
   CreatePost({required this.job});
@@ -907,12 +1043,11 @@ class CreatePost extends StatelessWidget{
     print('API baseUrl: ${baseUrl}');
     int? id;
 
-
     String? token = await _storage.read(key: 'auth_token');
     String? userData = await _storage.read(key: 'user_data');
     print("userData : $userData");
 
-    if (userData != null){
+    if (userData != null) {
       Map<String, dynamic> userMap = json.decode(userData);
       id = userMap['id'];
       print(id);
@@ -922,7 +1057,6 @@ class CreatePost extends StatelessWidget{
 
     Uri apiUri = Uri.parse("$baseUrl/api/jobs");
 
-
     try {
       var response = await http.post(
         apiUri,
@@ -931,7 +1065,7 @@ class CreatePost extends StatelessWidget{
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
-          "UserID" : id,
+          "UserID": id,
           "Title": updatedJob.title,
           "Description": updatedJob.description,
           "Location": updatedJob.location,
@@ -944,7 +1078,6 @@ class CreatePost extends StatelessWidget{
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         print('Job create successfully!');
-
       } else {
         print('Failed to update job. Status code: ${response.statusCode}');
         print('Response: ${response.body}');
@@ -964,7 +1097,8 @@ class CreatePost extends StatelessWidget{
         elevation: 0,
         leading: IconButton(
           onPressed: () => Navigator.of(context).pop(),
-          icon: Icon(Icons.arrow_back_ios,
+          icon: Icon(
+            Icons.arrow_back_ios,
             color: Colors.white,
           ),
         ),
@@ -1001,7 +1135,8 @@ class CreatePost extends StatelessWidget{
             Container(
               color: Colors.white, // เปลี่ยนสีพื้นหลังที่ต้องการ
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 23),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 25, vertical: 23),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1010,7 +1145,8 @@ class CreatePost extends StatelessWidget{
                       children: [
                         Expanded(
                           child: Container(
-                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
                               color: Colors.grey[200],
                               borderRadius: BorderRadius.circular(20),
@@ -1103,8 +1239,7 @@ class CreatePost extends StatelessWidget{
                         Expanded(
                           flex: 1,
                           child: Column(
-                            children: [
-                            ],
+                            children: [],
                           ),
                         ),
                       ],
@@ -1137,8 +1272,7 @@ class CreatePost extends StatelessWidget{
                         Expanded(
                           flex: 1,
                           child: Column(
-                            children: [
-                            ],
+                            children: [],
                           ),
                         ),
                       ],
@@ -1171,8 +1305,7 @@ class CreatePost extends StatelessWidget{
                         Expanded(
                           flex: 1,
                           child: Column(
-                            children: [
-                            ],
+                            children: [],
                           ),
                         ),
                       ],
@@ -1185,7 +1318,6 @@ class CreatePost extends StatelessWidget{
                         color: Colors.grey,
                       ),
                     ),
-
                     SizedBox(height: 16),
                     Container(
                       padding: EdgeInsets.all(12),
@@ -1207,7 +1339,8 @@ class CreatePost extends StatelessWidget{
                           TextField(
                             controller: _description,
                             maxLines: null, // Allow multiline
-                            style: TextStyle(fontSize: 16, color: Colors.black87),
+                            style:
+                                TextStyle(fontSize: 16, color: Colors.black87),
                             decoration: InputDecoration(
                               border: InputBorder.none,
                               contentPadding: EdgeInsets.zero,
@@ -1216,7 +1349,9 @@ class CreatePost extends StatelessWidget{
                         ],
                       ),
                     ),
-                    SizedBox(height: 24,),
+                    SizedBox(
+                      height: 24,
+                    ),
                     Center(
                       child: ElevatedButton(
                         onPressed: () async {
@@ -1229,27 +1364,28 @@ class CreatePost extends StatelessWidget{
                             jobPosition: _position.text,
                             company: job.company,
                             status: job.status,
-                            quantity: int.tryParse(_people.text) ?? job.quantity,
+                            quantity:
+                                int.tryParse(_people.text) ?? job.quantity,
                             applicant_count: job.applicant_count,
                             createdAt: job.createdAt,
                             updatedAt: DateTime.now().toString(),
                           );
 
                           await createJob(job.id, updatedJob);
-
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.orange[50],
                           foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 12),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
-                        child: Text("Create", style: TextStyle(color: Colors.deepOrange)),
+                        child: Text("Create",
+                            style: TextStyle(color: Colors.deepOrange)),
                       ),
                     ),
-
                   ],
                 ),
               ),
