@@ -59,10 +59,6 @@ const (
 	errDeleteJobPost   = "Failed to delete job post"
 )
 
-const (
-	SystemUserID = 1 // Replace with the actual ID of your system user.
-)
-
 func (s *JobService) CreateJobPost(jobPost *jobmodel.JobPost) error {
 	return s.DB.Create(jobPost).Error
 }
@@ -226,6 +222,8 @@ func (s *JobService) CreateJobApplication(application *jobmodel.JobApplication, 
 		application.Questions = questions
 	}
 
+	fmt.Println(application)
+
 	if err := tx.Save(application).Error; err != nil {
 		tx.Rollback() // Rollback if saving to job application fails
 		os.Remove(filePath)
@@ -234,7 +232,7 @@ func (s *JobService) CreateJobApplication(application *jobmodel.JobApplication, 
 	// 9. Create a Message with the QUESTIONS (if any).
 	if questions != nil && *questions != "" { // Check if questions are present
 		message := jobmodel.Message{
-			SenderID:    SystemUserID,       // Use the system user ID.
+			SenderID:    jobPost.UserID,     // Use the system user ID.
 			ReceiverID:  application.UserID, // Send to the applicant.
 			MessageText: *questions,         // Use the *questions* from Gemini.
 		}
