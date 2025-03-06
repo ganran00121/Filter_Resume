@@ -15,8 +15,8 @@ final FlutterSecureStorage _storage = FlutterSecureStorage();
 
 Future<void> main() async {
   AndroidOptions _getAndroidOptions() => const AndroidOptions(
-        encryptedSharedPreferences: true,
-      );
+    encryptedSharedPreferences: true,
+  );
   final storage = FlutterSecureStorage(aOptions: _getAndroidOptions());
   await dotenv.load(fileName: ".env");
   runApp(MyApp());
@@ -129,13 +129,6 @@ class _MainScreenState extends State<MainScreen> {
         ),
         label: 'Chat',
       ),
-      BottomNavigationBarItem(
-        icon: Padding(
-          padding: EdgeInsets.only(top: 8),
-          child: Icon(Icons.favorite, size: 32),
-        ),
-        label: 'Favourite',
-      ),
       if (_isCompanyType)
         BottomNavigationBarItem(
           icon: Padding(
@@ -144,6 +137,14 @@ class _MainScreenState extends State<MainScreen> {
           ),
           label: 'Company',
         ),
+      BottomNavigationBarItem(
+        icon: Padding(
+          padding: EdgeInsets.only(top: 8),
+          child: Icon(Icons.favorite, size: 32),
+        ),
+        label: 'Favourite',
+      ),
+
       BottomNavigationBarItem(
         icon: Padding(
           padding: EdgeInsets.only(top: 8),

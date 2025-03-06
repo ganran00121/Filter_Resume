@@ -68,7 +68,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
           int otherUserId = (senderId == userId) ? receiverId : senderId;
           Map<String, dynamic> otherUser =
-              (senderId == userId) ? message["Receiver"] : message["Sender"];
+          (senderId == userId) ? message["Receiver"] : message["Sender"];
 
           if (!groupedChats.containsKey(otherUserId)) {
             groupedChats[otherUserId] = {
@@ -109,53 +109,59 @@ class _ChatScreenState extends State<ChatScreen> {
     return Scaffold(
         appBar: AppBar(title: Text("Chats"), backgroundColor: Colors.white),
         body: isLoading
-            ? Center(child: CircularProgressIndicator())
+            ? Container(
+            color: Colors.white,
+            child: Center(child: CircularProgressIndicator()))
             : chats.isEmpty
-                ? Center(child: Text("No chats available"))
-                : Container(
-                    color: Colors.white,
-                    child: ListView.builder(
-                      itemCount: chats.length,
-                      itemBuilder: (context, index) {
-                        final chat = chats[index];
-                        return Column(
-                          children: [
-                            ListTile(
-                              contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 8),
-                              leading: CircleAvatar(
-                                  backgroundImage: AssetImage(chat.image)),
-                              title: Text(chat.name),
-                              trailing: Icon(Icons.arrow_forward_ios),
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => ChatDetailScreen(
-                                        receiverId: chat.receiverId,
-                                        receiverName: chat.name),
-                                  ),
-                                );
-                              },
-                            ),
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 16),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                      child: Divider(
-                                    height: 1,
-                                    color: Color(0xFFE0E0E0),
-                                  ))
-                                ],
-                              ),
-                            ),
-                          ],
-                        );
-                      },
+            ? Container(
+          // เพิ่ม Container ครอบ Center
+          color: Colors.white,
+          child: Center(child: Text("No chats available")),
+        )
+            : Container(
+          color: Colors.white,
+          child: ListView.builder(
+            itemCount: chats.length,
+            itemBuilder: (context, index) {
+              final chat = chats[index];
+              return Column(
+                children: [
+                  ListTile(
+                    contentPadding: EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 8),
+                    leading: CircleAvatar(
+                        backgroundImage: AssetImage(chat.image)),
+                    title: Text(chat.name),
+                    trailing: Icon(Icons.arrow_forward_ios),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ChatDetailScreen(
+                              receiverId: chat.receiverId,
+                              receiverName: chat.name),
+                        ),
+                      );
+                    },
+                  ),
+                  Padding(
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        Expanded(
+                            child: Divider(
+                              height: 1,
+                              color: Color(0xFFE0E0E0),
+                            ))
+                      ],
                     ),
-                  ));
+                  ),
+                ],
+              );
+            },
+          ),
+        ));
   }
 }
 
@@ -176,7 +182,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   int userId = 0;
   String userType = '';
   TextEditingController messageController =
-      TextEditingController(); // Input field controller
+  TextEditingController(); // Input field controller
 
   @override
   void initState() {
@@ -218,27 +224,27 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         setState(() {
           messages = jsonData
               .where((message) =>
-                  (message["SenderID"] == userId &&
-                      message["ReceiverID"] == widget.receiverId) ||
-                  (message["SenderID"] == widget.receiverId &&
-                      message["ReceiverID"] == userId))
+          (message["SenderID"] == userId &&
+              message["ReceiverID"] == widget.receiverId) ||
+              (message["SenderID"] == widget.receiverId &&
+                  message["ReceiverID"] == userId))
               .map((message) {
-                int messageId = message["ID"] ?? 0;
+            int messageId = message["ID"] ?? 0;
 
-                if (seenIds.contains(messageId)) {
-                  return null; // Skip this message
-                }
+            if (seenIds.contains(messageId)) {
+              return null; // Skip this message
+            }
 
-                seenIds.add(messageId); // Mark message as seen
+            seenIds.add(messageId); // Mark message as seen
 
-                return {
-                  "id": messageId,
-                  "sender_id": message["SenderID"] ?? 0,
-                  "receiver_id": message["ReceiverID"] ?? 0,
-                  "message_text": message["MessageText"] ?? "",
-                  "created_at": message["CreatedAt"] ?? "",
-                };
-              })
+            return {
+              "id": messageId,
+              "sender_id": message["SenderID"] ?? 0,
+              "receiver_id": message["ReceiverID"] ?? 0,
+              "message_text": message["MessageText"] ?? "",
+              "created_at": message["CreatedAt"] ?? "",
+            };
+          })
               .where((message) => message != null) //
               .toList()
               .cast<Map<String, dynamic>>(); //
@@ -356,90 +362,92 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         children: [
           Expanded(
               child: isLoading
-                  ? Center(child: CircularProgressIndicator())
+                  ? Container(
+                  color: Colors.white,
+                  child: Center(child: CircularProgressIndicator()))
                   : messages.isEmpty
-                      ? Center(child: Text("No messages yet"))
-                      : Container(
-                          color: Colors.white,
-                          child: ListView.builder(
-                            reverse: true,
-                            itemCount: messages.length,
-                            itemBuilder: (context, index) {
-                              final message = messages[index];
-                              bool isUser = message["sender_id"] == userId;
+                  ? Center(child: Text("No messages yet"))
+                  : Container(
+                color: Colors.white,
+                child: ListView.builder(
+                  reverse: true,
+                  itemCount: messages.length,
+                  itemBuilder: (context, index) {
+                    final message = messages[index];
+                    bool isUser = message["sender_id"] == userId;
 
-                              return Container(
-                                margin: EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 8),
-                                child: Row(
-                                  mainAxisAlignment: isUser
-                                      ? MainAxisAlignment.end
-                                      : MainAxisAlignment.start,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    if (!isUser)
-                                      Padding(
-                                        padding:
-                                            const EdgeInsets.only(right: 8.0),
-                                        child: CircleAvatar(
-                                          backgroundImage: AssetImage(''),
-                                          radius: 16,
-                                        ),
-                                      ),
-                                    Expanded(
-                                      child: Container(
-                                        margin: EdgeInsets.symmetric(
-                                            vertical: 4, horizontal: 12),
-                                        padding: EdgeInsets.all(10),
-                                        decoration: BoxDecoration(
-                                          color: isUser
-                                              ? Colors.orange[100]
-                                              : Color(0xFFF0F0F0),
-                                          borderRadius: BorderRadius.only(
-                                            topLeft: Radius.circular(
-                                                isUser ? 10 : 0),
-                                            topRight: Radius.circular(
-                                                isUser ? 0 : 10),
-                                            bottomLeft: Radius.circular(10),
-                                            bottomRight: Radius.circular(10),
-                                          ),
-                                        ),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              message["message_text"],
-                                              style: TextStyle(
-                                                  fontSize: 16,
-                                                  color: Colors.black),
-                                            ),
-                                            SizedBox(height: 5),
-                                            Text(
-                                              message["created_at"],
-                                              style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: Colors.grey[600]),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                    if (isUser)
-                                      Padding(
-                                        padding:
-                                            const EdgeInsets.only(left: 8.0),
-                                        child: CircleAvatar(
-                                          backgroundImage: AssetImage(''),
-                                          radius: 16,
-                                        ),
-                                      )
-                                  ],
+                    return Container(
+                      margin: EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      child: Row(
+                        mainAxisAlignment: isUser
+                            ? MainAxisAlignment.end
+                            : MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (!isUser)
+                            Padding(
+                              padding:
+                              const EdgeInsets.only(right: 8.0),
+                              child: CircleAvatar(
+                                backgroundImage: AssetImage(''),
+                                radius: 16,
+                              ),
+                            ),
+                          Expanded(
+                            child: Container(
+                              margin: EdgeInsets.symmetric(
+                                  vertical: 4, horizontal: 12),
+                              padding: EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: isUser
+                                    ? Colors.orange[100]
+                                    : Color(0xFFF0F0F0),
+                                borderRadius: BorderRadius.only(
+                                  topLeft: Radius.circular(
+                                      isUser ? 10 : 0),
+                                  topRight: Radius.circular(
+                                      isUser ? 0 : 10),
+                                  bottomLeft: Radius.circular(10),
+                                  bottomRight: Radius.circular(10),
                                 ),
-                              );
-                            },
+                              ),
+                              child: Column(
+                                crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    message["message_text"],
+                                    style: TextStyle(
+                                        fontSize: 16,
+                                        color: Colors.black),
+                                  ),
+                                  SizedBox(height: 5),
+                                  Text(
+                                    message["created_at"],
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[600]),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
-                        )),
+                          if (isUser)
+                            Padding(
+                              padding:
+                              const EdgeInsets.only(left: 8.0),
+                              child: CircleAvatar(
+                                backgroundImage: AssetImage(''),
+                                radius: 16,
+                              ),
+                            )
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              )),
           // Text Input & Send Button
           Container(
             padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -466,19 +474,16 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                             : "Type a message...",
                         border: InputBorder.none,
                         contentPadding:
-                            EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+                        EdgeInsets.symmetric(vertical: 10, horizontal: 15),
                       ),
                     ),
                   ),
                 ),
                 IconButton(
                   icon: Icon(Icons.send,
-                      color: userType == "company"
-                          ? Colors.grey
-                          : Colors.orange),
-                  onPressed: userType == "company"
-                      ? null
-                      : sendMessage,
+                      color:
+                      userType == "company" ? Colors.grey : Colors.orange),
+                  onPressed: userType == "company" ? null : sendMessage,
                 ),
               ],
             ),
