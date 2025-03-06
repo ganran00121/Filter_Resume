@@ -27,6 +27,10 @@ type ResetPasswordRequest struct {
 	Email       string `json:"email" binding:"required,email"`
 	NewPassword string `json:"new_password" binding:"required"`
 }
+type UpdateProfileRequest struct {
+	Name  *string `json:"name"`  // Use pointers to allow partial updates
+	Phone *string `json:"phone"` // Use pointers to allow partial updates
+}
 type RegisterRequest struct {
 	Email       string  `json:"email" binding:"required"`
 	Name        string  `json:"name" binding:"required"`

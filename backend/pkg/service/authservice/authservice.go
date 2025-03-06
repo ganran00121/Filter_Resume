@@ -30,6 +30,7 @@ type IAuthService interface {
 	RequestPasswordReset(email string) error
 	VerifyOTP(email, otp string) (*authmodel.User, error)
 	ResetPassword(req *authmodel.ResetPasswordRequest) error
+	UpdateProfile(userID uint, name, phone *string) error
 }
 type AuthService struct {
 	DB *gorm.DB
@@ -132,6 +133,48 @@ func (s *AuthService) ResetPassword(req *authmodel.ResetPasswordRequest) error {
 	if err := s.DB.Save(&user).Error; err != nil {
 		return errors.New("failed to update password")
 	}
+	return nil
+}
+
+// UpdateProfile updates the user's profile (name and phone).
+func (s *AuthService) UpdateProfile(userID uint, name, phone *string) error {
+	// 1. Find the user by ID.
+	user, err := s.GetUserByID(userID) // Reuse GetUserByID for consistency and soft-delete handling
+	if err != nil {
+		return fmt.Errorf("failed to get user by id: %w", err)
+	}
+	if user == nil {
+		return ErrUserNotFound // Consistent error for not found
+	}
+
+	// 2. Update fields ONLY if they are provided (not nil).
+	tx := s.DB.Begin() // Use a transaction!
+	if tx.Error != nil {
+		return fmt.Errorf("failed to start transaction: %w", tx.Error)
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback() // Rollback on panic
+		}
+	}()
+
+	if name != nil {
+		user.Name = *name // Dereference the pointer to get the string value
+	}
+	if phone != nil {
+		user.Phone = *phone // Dereference the pointer to get the string value
+	}
+
+	// 3. Save the changes (within a transaction).
+	if err := tx.Save(user).Error; err != nil { // Update the user
+		tx.Rollback() // Rollback on error
+		return fmt.Errorf("failed to update profile: %w", err)
+	}
+	if err := tx.Commit().Error; err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
 	return nil
 }
 

@@ -16,6 +16,7 @@ type IAuthHandler interface {
 	GetUserProfile(c *fiber.Ctx) error
 	RequestPasswordReset(c *fiber.Ctx) error
 	ResetPassword(c *fiber.Ctx) error
+	UpdateProfile(c *fiber.Ctx) error
 }
 type AuthHandler struct {
 	AuthService *authservice.AuthService
@@ -92,6 +93,34 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(response)
+}
+
+func (h *AuthHandler) UpdateProfile(c *fiber.Ctx) error {
+	// 1. Get User ID from JWT (Authentication).
+	userID, err := getUserIDFromToken(c) // Reuse your existing helper function
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"})
+	}
+
+	// 2. Parse the Request Body.
+	var req authmodel.UpdateProfileRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
+	}
+
+	// 3. Check if at least one field to update is provided.
+	if req.Name == nil && req.Phone == nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "At least one field (name or phone) must be provided"})
+	}
+	// 4. Call the Service Layer.
+	if err := h.AuthService.UpdateProfile(userID, req.Name, req.Phone); err != nil {
+		if errors.Is(err, authservice.ErrUserNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "User not found"})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update profile"})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Profile updated successfully"})
 }
 
 // GetUserProfile handles GET /api/user/profile
