@@ -222,8 +222,6 @@ func (s *JobService) CreateJobApplication(application *jobmodel.JobApplication, 
 		application.Questions = questions
 	}
 
-	fmt.Println(application)
-
 	if err := tx.Save(application).Error; err != nil {
 		tx.Rollback() // Rollback if saving to job application fails
 		os.Remove(filePath)

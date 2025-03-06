@@ -3,15 +3,18 @@ package messagehandler
 
 import (
 	"backend/pkg/service/messageservice"
+	"fmt"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type IMessageHandler interface {
 	SendMessage(c *fiber.Ctx) error
 	ViewMessages(c *fiber.Ctx) error
 	GetMessage(c *fiber.Ctx) error
+	RespondToApplicant(c *fiber.Ctx) error
 }
 
 type MessageHandler struct {
@@ -24,16 +27,15 @@ func NewMessageHandler(messageService messageservice.IMessageService) *MessageHa
 
 // SendMessage handles POST /api/messages
 func (h *MessageHandler) SendMessage(c *fiber.Ctx) error {
-	// Get sender ID from JWT (authenticated user).
-	senderID, ok := c.Locals("userID").(uint) // Get and assert type
+	senderID, ok := c.Locals("userID").(uint)
 	if !ok {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"})
 	}
 
-	// Define a request struct for the message body.
 	type SendMessageRequest struct {
 		ReceiverID  uint   `json:"receiver_id" binding:"required"`
 		MessageText string `json:"message_text" binding:"required"`
+		JobID       uint   `json:"job_id"`
 	}
 
 	var req SendMessageRequest
@@ -41,17 +43,24 @@ func (h *MessageHandler) SendMessage(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
 	}
 
-	// Call the service to send the message.
-	message, err := h.MessageService.SendMessage(senderID, req.ReceiverID, req.MessageText)
+	// Call InteractWithGemini.  This now handles *both* sending to Gemini
+	// *and* saving both messages.
+	userMessage, aiMessage, err := h.MessageService.InteractWithGemini(senderID, req.ReceiverID, req.MessageText, req.JobID)
+	// fmt.Println(userMessage)
+	fmt.Println("====================================")
+	// fmt.Println(aiMessage)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to send message"})
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(message) // Return the created message
+	// Return both messages to the client.
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
+		"user_message": userMessage,
+		"ai_message":   aiMessage,
+	})
 }
 
 // ViewMessages handles GET /api/messages/:userId
-// ViewMessages handles GET /api/messages/:userId with authorization checks.
 func (h *MessageHandler) ViewMessages(c *fiber.Ctx) error {
 	userIDStr := c.Params("userId") // Get as string first
 	userID, err := strconv.ParseUint(userIDStr, 10, 64)
@@ -113,4 +122,64 @@ func (h *MessageHandler) GetMessage(c *fiber.Ctx) error {
 	}
 	return c.Status(fiber.StatusOK).JSON(message)
 
+}
+
+func (h *MessageHandler) RespondToApplicant(c *fiber.Ctx) error {
+	// 1. Get the sender's ID (company user) from the JWT.
+	senderID, ok := c.Locals("userID").(uint)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"})
+	}
+	senderUserType, ok := c.Locals("userType").(string)
+	if !ok || senderUserType != "company" {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Forbidden"})
+	}
+
+	// 2. Get the job ID from the URL parameter.
+	jobID, err := strconv.ParseUint(c.Params("jobId"), 10, 64)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid job ID"})
+	}
+
+	// 3. Get applicant ID from request body
+	var req struct {
+		ReceiverID uint   `json:"receiver_id" binding:"required"` // Use a struct for clarity
+		Response   string `json:"response" binding:"required"`
+	}
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
+	}
+	// 4. Call the service to process and send the message.
+	responseText, err := h.MessageService.ProcessAndSendMessage(senderID, req.ReceiverID, req.Response, uint(jobID))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fmt.Sprintf("Failed to send message: %v", err)})
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "Response sent successfully", "response": responseText})
+}
+
+// Helper function to get user id from jwt token (Same as previous GetUserProfile)
+func getUserIDFromToken(c *fiber.Ctx) (uint, error) {
+	user := c.Locals("user") // Get the user object from context (set by middleware)
+	if user == nil {
+		return 0, fmt.Errorf("no user in context")
+	}
+
+	token, ok := user.(*jwt.Token) // Assert to *jwt.Token  <-- CORRECT TYPE
+	if !ok {
+		return 0, fmt.Errorf("invalid token type")
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims) // Get the claims
+	if !ok {
+		return 0, fmt.Errorf("invalid claims type")
+	}
+
+	userIDFloat, ok := claims["user_id"].(float64) // JWT IDs are often floats
+	if !ok {
+		return 0, fmt.Errorf("invalid user ID format in token")
+	}
+	userID := uint(userIDFloat) // Convert to uint
+
+	return userID, nil
 }

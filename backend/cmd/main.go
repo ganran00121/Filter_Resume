@@ -79,7 +79,7 @@ func main() {
 	geminiEndpoint := "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="
 	geminiService := geminiservice.NewGeminiService(geminiAPIKey, geminiEndpoint) // Inject API Key
 	jobService := jobservice.NewJobService(db, pdfExtractor, geminiService)       // Inject PdfExtractor and GeminiService
-	messageService := messageservice.NewMessageService(db)
+	messageService := messageservice.NewMessageService(db, geminiService, jobService, pdfExtractor)
 
 	// Initialize handlers
 	authHandler := authhandler.NewAuthHandler(authService)
