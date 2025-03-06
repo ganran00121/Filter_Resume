@@ -12,12 +12,6 @@ class CompanyScreen extends StatefulWidget {
 }
 
 final FlutterSecureStorage _storage = FlutterSecureStorage();
-final TextEditingController _title = TextEditingController();
-final TextEditingController _location = TextEditingController();
-final TextEditingController _salary = TextEditingController();
-final TextEditingController _people = TextEditingController();
-final TextEditingController _position = TextEditingController();
-final TextEditingController _description = TextEditingController();
 int _count = 0;
 
 
@@ -180,42 +174,44 @@ class _CompanyScreenState extends State<CompanyScreen> {
                   },
                 ),
                 ),
-              Align(
-                alignment: Alignment.bottomRight,
-                child: FloatingActionButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => CreatePost(
-                            job: Job(
-                              id: 0, // Default ID
-                              title: "",
-                              description: "",
-                              location: "",
-                              salaryRange: "",
-                              jobPosition: "",
-                              company: "",
-                              status: true,
-                              quantity: 0,
-                              applicant_count: 0,
-                              createdAt: "",
-                              updatedAt: "",
-                            ),
-                          )
-                      ),
-                    );
-                  },
-                  backgroundColor: Colors.orange,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(100),
-                  ),
-                  child: const Icon(Icons.add, color: Colors.white, size: 30,),
-                ),
-              ),
             ],
           ),
         ),
+      ),
+      floatingActionButton:   FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => CreatePost(
+                  job: Job(
+                    id: 0, // Default ID
+                    title: "",
+                    description: "",
+                    location: "",
+                    salaryRange: "",
+                    jobPosition: "",
+                    company: "",
+                    status: true,
+                    quantity: 0,
+                    applicant_count: 0,
+                    createdAt: "",
+                    updatedAt: "",
+                  ),
+                ),
+            ),
+          ).then((result) {
+            if (result == "created") {
+              setState(() {});
+            }
+
+          });
+        },
+        backgroundColor: Colors.orange,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(100),
+        ),
+        child: const Icon(Icons.add, color: Colors.white, size: 30,),
       ),
     );
   }
@@ -615,6 +611,7 @@ class _JobDetailState extends State<JobDetail> {
 
       if (response.statusCode == 200) {
         print('Job updated successfully!');
+        // _SuccessDialog(context, 'Post updated successfully');
         Navigator.pop(context, "updated");
       } else {
         print('Failed to update job. Status code: ${response.statusCode}');
@@ -654,6 +651,8 @@ class _JobDetailState extends State<JobDetail> {
     );
   }
 
+
+
   Future<void> deletePost(int jobId) async {
     String baseUrl = dotenv.env['BASE_URL'] ?? 'default_url';
 
@@ -675,6 +674,7 @@ class _JobDetailState extends State<JobDetail> {
       );
       if (response.statusCode == 200) {
         print("Job deleted successfully!");
+        // _SuccessDialog(context, 'Post deleted successfully');
         Navigator.pop(context, "deleted");
       } else {
         print("Failed to delete job. Status: ${response.statusCode}");
@@ -1027,11 +1027,34 @@ class _JobDetailState extends State<JobDetail> {
   }
 }
 
-// TODO: add detail of company
-class CreatePost extends StatelessWidget {
+// TODO: add CreatePost of company
+class CreatePost extends StatefulWidget{
   final Job job;
 
   CreatePost({required this.job});
+
+  @override
+  _CreatePostState createState() => _CreatePostState();
+}
+
+class _CreatePostState extends State<CreatePost> {
+  final TextEditingController _title = TextEditingController();
+  final TextEditingController _location = TextEditingController();
+  final TextEditingController _salary = TextEditingController();
+  final TextEditingController _people = TextEditingController();
+  final TextEditingController _position = TextEditingController();
+  final TextEditingController _description = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _title.text = '';
+    _location.text = '';
+    _salary.text = '';
+    _people.text ='';
+    _position.text = '';
+    _description.text = '';
+  }
 
   Future<void> createJob(int jobId, Job updatedJob) async {
     String baseUrl = dotenv.env['BASE_URL'] ?? 'default_url';
@@ -1078,6 +1101,8 @@ class CreatePost extends StatelessWidget {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         print('Job create successfully!');
+        // _SuccessDialog(context, 'Post create successfully');
+        Navigator.pop(context, "created");
       } else {
         print('Failed to update job. Status code: ${response.statusCode}');
         print('Response: ${response.body}');
@@ -1085,6 +1110,17 @@ class CreatePost extends StatelessWidget {
     } catch (e) {
       print('Error updating job: $e');
     }
+  }
+
+  @override
+  void dispose() {
+    _title.dispose();
+    _location.dispose();
+    _salary.dispose();
+    _people.dispose();
+    _position.dispose();
+    _description.dispose();
+    super.dispose();
   }
 
   @override
@@ -1169,7 +1205,7 @@ class CreatePost extends StatelessWidget {
                     ),
                     SizedBox(height: 8),
                     Text(
-                      job.company,
+                      widget.job.company,
                       style: TextStyle(
                         fontSize: 16,
                         color: Colors.grey,
@@ -1356,22 +1392,22 @@ class CreatePost extends StatelessWidget {
                       child: ElevatedButton(
                         onPressed: () async {
                           Job updatedJob = Job(
-                            id: job.id,
+                            id: widget.job.id,
                             title: _title.text,
                             description: _description.text,
                             location: _location.text,
                             salaryRange: _salary.text,
                             jobPosition: _position.text,
-                            company: job.company,
-                            status: job.status,
+                            company: widget.job.company,
+                            status: widget.job.status,
                             quantity:
-                                int.tryParse(_people.text) ?? job.quantity,
-                            applicant_count: job.applicant_count,
-                            createdAt: job.createdAt,
+                                int.tryParse(_people.text) ?? widget.job.quantity,
+                            applicant_count: widget.job.applicant_count,
+                            createdAt: widget.job.createdAt,
                             updatedAt: DateTime.now().toString(),
                           );
 
-                          await createJob(job.id, updatedJob);
+                          await createJob(widget.job.id, updatedJob);
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.orange[50],
