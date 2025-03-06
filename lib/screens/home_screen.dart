@@ -70,6 +70,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       } else if (response.statusCode == 401) {
         Map<String, String> user = await _storage.readAll();
         print("userinfo : ${user}");
+        await _storage.deleteAll();
+
 
         throw Exception('Failed to load jobs : (${response.statusCode})');
       } else {
