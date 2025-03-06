@@ -23,6 +23,10 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
+type ResetPasswordRequest struct {
+	Email       string `json:"email" binding:"required,email"`
+	NewPassword string `json:"new_password" binding:"required"`
+}
 type RegisterRequest struct {
 	Email       string  `json:"email" binding:"required"`
 	Name        string  `json:"name" binding:"required"`

@@ -14,6 +14,8 @@ type IAuthHandler interface {
 	Register(c *fiber.Ctx) error
 	Login(c *fiber.Ctx) error
 	GetUserProfile(c *fiber.Ctx) error
+	RequestPasswordReset(c *fiber.Ctx) error
+	ResetPassword(c *fiber.Ctx) error
 }
 type AuthHandler struct {
 	AuthService *authservice.AuthService
@@ -133,6 +135,17 @@ func (h *AuthHandler) GetUserProfile(c *fiber.Ctx) error {
 
 	// 6. Return the Response.
 	return c.Status(fiber.StatusOK).JSON(response)
+}
+
+func (h *AuthHandler) ResetPassword(c *fiber.Ctx) error {
+	var req authmodel.ResetPasswordRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	if err := h.AuthService.ResetPassword(&req); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Password reset successful"})
 }
 
 // Helper function to get user id from jwt token

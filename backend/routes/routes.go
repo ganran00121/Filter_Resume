@@ -12,9 +12,9 @@ import (
 // RegisterAuthRoutes sets up routes for authentication.
 func RegisterAuthRoutes(app *fiber.App, authHandler *authhandler.AuthHandler) {
 	authGroup := app.Group("/auth")
-	authGroup.Post("/register", authHandler.Register) // POST /auth/register
-	authGroup.Post("/login", authHandler.Login)       // POST /auth/login
-
+	authGroup.Post("/register", authHandler.Register)            // POST /auth/register
+	authGroup.Post("/login", authHandler.Login)                  // POST /auth/login
+	authGroup.Post("/reset-password", authHandler.ResetPassword) // POST /auth/reset-password
 	userGroup := app.Group("/api/user")
 	userGroup.Use(middleware.AuthMiddleware)              // Apply JWT middleware
 	userGroup.Get("/profile", authHandler.GetUserProfile) // POST /api/user/profile
