@@ -16,7 +16,9 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   List<Job> jobs = [];
+  List<Job> filteredJobs = [];
   bool isLoading = true;
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -65,6 +67,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
         setState(() {
           jobs = fetchedJobs;
+          filteredJobs = _filterJobs(_searchQuery);
           isLoading = false;
         });
       } else if (response.statusCode == 401) {
@@ -81,6 +84,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       print('Error fetching jobs: $e');
       setState(() => isLoading = false);
     }
+  }
+
+  List<Job> _filterJobs(String query) {
+    if (query.isEmpty) {
+      return jobs; // ถ้าคำค้นหาเป็นค่าว่าง ให้แสดงรายการงานทั้งหมด
+    } else {
+      return jobs
+          .where((job) => job.title.toLowerCase().contains(query.toLowerCase()))
+          .toList(); // กรองงานที่มีคำค้นหาใน title
+    }
+  }
+
+  void _updateSearchQuery(String query) {
+    setState(() {
+      _searchQuery = query;
+      filteredJobs = _filterJobs(query);
+    });
+    print("_searchQuery  :  ${_searchQuery}");
   }
 
   @override
@@ -106,6 +127,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
               ),
               SizedBox(height: 15),
+              // เพิ่ม TextField สำหรับค้นหา
+              TextField(
+                onChanged: _updateSearchQuery, // เรียกฟังก์ชันเมื่อมีการพิมพ์
+                decoration: InputDecoration(
+                  hintText: 'Search for jobs...',
+                  prefixIcon: Icon(Icons.search),
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              SizedBox(height: 15),
               Expanded(
                 child: isLoading
                     ? Center(
@@ -117,14 +148,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 "Failed to load jobs or no job at the moment."), // แสดงข้อความเมื่อ jobs เป็น null
                           )
                         : ListView.builder(
-                            itemCount: jobs!
-                                .length, // ใช้ jobs!.length เพื่อบอกว่า jobs ไม่ใช่ null
-                            itemBuilder: (context, index) {
-                              return JobCard(
-                                  job: jobs![
-                                      index]); // ใช้ jobs![index] เพื่อบอกว่า jobs ไม่ใช่ null
-                            },
-                          ),
+                  itemCount: filteredJobs.length,
+                  itemBuilder: (context, index) {
+                    return JobCard(job: filteredJobs[index]);
+                  },
+                ),
               ),
             ],
           ),
