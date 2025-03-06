@@ -9,12 +9,13 @@ import 'dart:convert';
 
 final _storage = FlutterSecureStorage();
 
-class HomeScreen extends StatefulWidget {
+class FavouriteScreen extends StatefulWidget {
   @override
-  _HomeScreenState createState() => _HomeScreenState();
+  _FavouriteScreenState createState() => _FavouriteScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+class _FavouriteScreenState extends State<FavouriteScreen> with WidgetsBindingObserver {
+
   List<Job> jobs = [];
   List<Job> filteredJobs = [];
   bool isLoading = true;
@@ -41,57 +42,42 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Future<void> fetchData() async {
-    setState(() => isLoading = true);
-    String baseUrl = dotenv.env['BASE_URL'] ?? 'default_url';
-
-    if (!baseUrl.startsWith('http')) {
-      baseUrl = 'https://$baseUrl';
+  setState(() => isLoading = true);
+  try {
+    List<String>? savedJobsJson = await _storage.readAll().then((map) {
+      return map.values
+          .where((value) => value.contains('job'))
+          .toList();
+    });
+    print("savedJobsJson : ${savedJobsJson} " );
+    if (savedJobsJson != null && savedJobsJson.isNotEmpty) {
+      List<Job> fetchedJobs = savedJobsJson
+          .map((jsonString) => Job.fromJson(jsonDecode(jsonString)))
+          .toList();
+      setState(() {
+        jobs = fetchedJobs;
+        filteredJobs = _filterJobs(_searchQuery);
+        isLoading = false;
+      });
+    } else {
+      setState(() {
+        isLoading = false;
+      });
+      print("No jobs found in storage.");
     }
-
-    Uri apiUri = Uri.parse('$baseUrl/api/jobs');
-
-    try {
-      String? token = await _storage.read(key: 'auth_token');
-
-      var response = await http.get(
-        apiUri,
-        headers: {
-          'Authorization': token != null ? 'Bearer $token' : '',
-          'Content-Type': 'application/json; charset=UTF-8',
-        },
-      );
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        List<dynamic> jsonData = json.decode(response.body);
-        List<Job> fetchedJobs =
-            jsonData.map((data) => Job.fromJson(data)).toList();
-
-        setState(() {
-          jobs = fetchedJobs;
-          filteredJobs = _filterJobs(_searchQuery);
-          isLoading = false;
-        });
-      } else if (response.statusCode == 401) {
-        Map<String, String> user = await _storage.readAll();
-        print("userinfo : ${user}");
-        await _storage.deleteAll();
-
-        throw Exception('Failed to load jobs : (${response.statusCode})');
-      } else {
-        throw Exception('Failed to load jobs : (${response.statusCode})');
-      }
-    } catch (e) {
-      print('Error fetching jobs: $e');
-      setState(() => isLoading = false);
-    }
+  } catch (e) {
+    print('Error fetching jobs from storage: $e');
+    setState(() => isLoading = false);
   }
+}
 
   List<Job> _filterJobs(String query) {
     if (query.isEmpty) {
-      return jobs; // ถ้าคำค้นหาเป็นค่าว่าง ให้แสดงรายการงานทั้งหมด
+      return jobs;
     } else {
       return jobs
           .where((job) => job.title.toLowerCase().contains(query.toLowerCase()))
-          .toList(); // กรองงานที่มีคำค้นหาใน title
+          .toList();
     }
   }
 
@@ -192,9 +178,9 @@ class Job {
       title: json['title'] ?? '',
       description: json['description'] ?? '',
       location: json['location'] ?? '',
-      salaryRange: json['salary_range'] ?? '',
+      salaryRange: json['salary_range'] ?? json['salaryRange'] ?? '',
       quantity: json['quantity'] ?? 0, // ใช้ ?? 0 กัน null
-      jobPosition: json['job_position'] ?? '',
+      jobPosition: json['job_position'] ?? json['jobPosition'] ?? '',
       status: json['status'] ?? false, // ถ้า null ให้เป็น false
       createdAt: json['created_at'] ?? '',
       updatedAt: json['updated_at'] ?? '',
@@ -297,7 +283,7 @@ class JobCard extends StatelessWidget {
                                 Icons.people, job.quantity.toString())),
                       ],
                     ),
-                    SizedBox(height: 8), // เพิ่มระยะห่างระหว่างบรรทัด
+                    SizedBox(height: 8),
                     Row(
                       children: [
                         Expanded(

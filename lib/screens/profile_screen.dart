@@ -48,21 +48,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Map<String, dynamic>? userProfile;
   bool isLoading = true;
 
-
   var _isEdited;
 
   @override
-  void initState()  {
+  void initState() {
     super.initState();
     _isEdited = false;
     fetchData();
   }
+
   void logout() async {
     await _storage.deleteAll();
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (context) => SigninScreen()),
-          (route) => false,
+      (route) => false,
     );
   }
 
@@ -94,149 +94,222 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  void putProfile() async {
+  try {
+    print('Profile has been updated');
+  } catch (e) {
+    print('Error updating profile: $e');
+  }
+}
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
           child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16,  vertical: 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(height: 30),
-                  Container(
-                    padding: EdgeInsets.all(16.0),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(height: 30),
+              Container(
+                padding: EdgeInsets.all(16.0),
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Column(
+                  children: [
+                    const SizedBox(
+                      height: 20,
                     ),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 20,),
-                        SizedBox(
-                          width: 120,
-                          height: 120,
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(100),
-                            child: Image.asset('assets/images/user_profile.png'),
-                          ),
+                    SizedBox(
+                      width: 120,
+                      height: 120,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(100),
+                        child: Image.asset('assets/images/user_profile.png'),
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 10,
+                    ),
+                    // Text(
+                    //   userProfile?['name'] ?? 'No Name',
+                    //   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    // ),
+                    const SizedBox(height: 50),
+                    TextFormField(
+                      controller: nameController,
+                      enabled: _isEdited,
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      decoration: InputDecoration(
+                        labelText: "Name", // หัวข้อของช่องป้อนข้อมูล
+                        labelStyle: TextStyle(
+                            color: Colors.black,
+                            fontSize: 16), // สไตล์ของหัวข้อ
+                        filled: true, // เปิดการเติมสีพื้นหลัง
+                        fillColor: Colors.white, // กำหนดสีพื้นหลังเป็นสีขาว
+                        border: OutlineInputBorder(
+                          // ใส่ขอบให้ช่องป้อนข้อมูล
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey, width: 1),
                         ),
-                        const SizedBox(height: 10,),
-                        Text(
-                          userProfile?['name'] ?? 'No Name',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        focusedBorder: OutlineInputBorder(
+                          // ขอบตอนโฟกัส
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.blue, width: 2),
                         ),
-                        const SizedBox(height: 50),
-                        TextFormField(
-                          controller: emailController,
-                          enabled: _isEdited,
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                          decoration: InputDecoration(
-                            labelText: "Email", // หัวข้อของช่องป้อนข้อมูล
-                            labelStyle: TextStyle(color: Colors.black, fontSize: 16), // สไตล์ของหัวข้อ
-                            filled: true, // เปิดการเติมสีพื้นหลัง
-                            fillColor: Colors.white, // กำหนดสีพื้นหลังเป็นสีขาว
-                            border: OutlineInputBorder( // ใส่ขอบให้ช่องป้อนข้อมูล
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide(color: Colors.grey, width: 1),
-                            ),
-                            focusedBorder: OutlineInputBorder( // ขอบตอนโฟกัส
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide(color: Colors.blue, width: 2),
-                            ),
-                            contentPadding: EdgeInsets.symmetric(vertical: 15, horizontal: 10), // จัดระยะห่างภายในช่อง
-                          ),
+                        contentPadding: EdgeInsets.symmetric(
+                            vertical: 15,
+                            horizontal: 10), // จัดระยะห่างภายในช่อง
+                      ),
+                    ),
+                    SizedBox(height: 10),
+                    TextFormField(
+                      controller: emailController,
+                      enabled: false,
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      decoration: InputDecoration(
+                        labelText: "Email", // หัวข้อของช่องป้อนข้อมูล
+                        labelStyle: TextStyle(
+                            color: Colors.black,
+                            fontSize: 16), // สไตล์ของหัวข้อ
+                        filled: true, // เปิดการเติมสีพื้นหลัง
+                        fillColor: Colors.white, // กำหนดสีพื้นหลังเป็นสีขาว
+                        border: OutlineInputBorder(
+                          // ใส่ขอบให้ช่องป้อนข้อมูล
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey, width: 1),
                         ),
-                        SizedBox(height: 10),
-                        TextFormField(
-                          controller: userTypeController,
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                          readOnly: true,
-                          enabled: false,
-                          decoration: InputDecoration(
-                            labelText: "User Type", // หัวข้อของช่องป้อนข้อมูล
-                            labelStyle: TextStyle(color: Colors.black, fontSize: 16), // สไตล์ของหัวข้อ
-                            filled: true, // เปิดการเติมสีพื้นหลัง
-                            fillColor: Colors.white, // กำหนดสีพื้นหลังเป็นสีขาว
-                            border: OutlineInputBorder( // ใส่ขอบให้ช่องป้อนข้อมูล
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide(color: Colors.grey, width: 1),
-                            ),
-                            focusedBorder: OutlineInputBorder( // ขอบตอนโฟกัส
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide(color: Colors.blue, width: 2),
-                            ),
-                            contentPadding: EdgeInsets.symmetric(vertical: 15, horizontal: 10), // จัดระยะห่างภายในช่อง
-                          ),
+                        focusedBorder: OutlineInputBorder(
+                          // ขอบตอนโฟกัส
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.blue, width: 2),
                         ),
-                        SizedBox(height: 10),
-                        TextFormField(
-                          controller: phoneController,
-                          enabled: _isEdited,
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                          decoration: InputDecoration(
-                            labelText: "Phone", // หัวข้อของช่องป้อนข้อมูล
-                            labelStyle: TextStyle(color: Colors.black, fontSize: 16), // สไตล์ของหัวข้อ
-                            filled: true, // เปิดการเติมสีพื้นหลัง
-                            fillColor: Colors.white, // กำหนดสีพื้นหลังเป็นสีขาว
-                            border: OutlineInputBorder( // ใส่ขอบให้ช่องป้อนข้อมูล
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide(color: Colors.grey, width: 1),
-                            ),
-                            focusedBorder: OutlineInputBorder( // ขอบตอนโฟกัส
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide(color: Colors.blue, width: 2),
-                            ),
-                            contentPadding: EdgeInsets.symmetric(vertical: 15, horizontal: 10), // จัดระยะห่างภายในช่อง
-                          ),
+                        contentPadding: EdgeInsets.symmetric(
+                            vertical: 15,
+                            horizontal: 10), // จัดระยะห่างภายในช่อง
+                      ),
+                    ),
+                    SizedBox(height: 10),
+                    TextFormField(
+                      controller: userTypeController,
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      readOnly: true,
+                      enabled: false,
+                      decoration: InputDecoration(
+                        labelText: "User Type", // หัวข้อของช่องป้อนข้อมูล
+                        labelStyle: TextStyle(
+                            color: Colors.black,
+                            fontSize: 16), // สไตล์ของหัวข้อ
+                        filled: true, // เปิดการเติมสีพื้นหลัง
+                        fillColor: Colors.white, // กำหนดสีพื้นหลังเป็นสีขาว
+                        border: OutlineInputBorder(
+                          // ใส่ขอบให้ช่องป้อนข้อมูล
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey, width: 1),
                         ),
-                        const SizedBox(height: 20,),
-                        Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                          child: SizedBox(
-                              width: 200,
-                              child: ElevatedButton(
-                                onPressed: (){
-                                  setState(() {
-                                    _isEdited = !_isEdited;
-                                  });
-                                },
-                                style: ElevatedButton.styleFrom(
-                                    backgroundColor: _isEdited ? Colors.green : Colors.blueAccent,
-                                    side: BorderSide.none,
-                                    shape:RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                      side: BorderSide.none,
-                                    )),
-                                child: _isEdited ? const Text('Save change', style: TextStyle(color: Colors.white)) : const Text('Edit profile', style: TextStyle(color: Colors.white)),
-                              )
-                          ),
+                        focusedBorder: OutlineInputBorder(
+                          // ขอบตอนโฟกัส
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.blue, width: 2),
                         ),
-                      ],
+                        contentPadding: EdgeInsets.symmetric(
+                            vertical: 15,
+                            horizontal: 10), // จัดระยะห่างภายในช่อง
+                      ),
+                    ),
+                    SizedBox(height: 10),
+                    TextFormField(
+                      controller: phoneController,
+                      enabled: _isEdited,
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      decoration: InputDecoration(
+                        labelText: "Phone", // หัวข้อของช่องป้อนข้อมูล
+                        labelStyle: TextStyle(
+                            color: Colors.black,
+                            fontSize: 16), // สไตล์ของหัวข้อ
+                        filled: true, // เปิดการเติมสีพื้นหลัง
+                        fillColor: Colors.white, // กำหนดสีพื้นหลังเป็นสีขาว
+                        border: OutlineInputBorder(
+                          // ใส่ขอบให้ช่องป้อนข้อมูล
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey, width: 1),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          // ขอบตอนโฟกัส
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.blue, width: 2),
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                            vertical: 15,
+                            horizontal: 10), // จัดระยะห่างภายในช่อง
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 20,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: SizedBox(
+                          width: 200,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              setState(() {
+                                _isEdited = !_isEdited;
+                              });
+                              if (_isEdited) {
+                                putProfile();
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                                backgroundColor: _isEdited
+                                    ? Colors.green
+                                    : Colors.blueAccent,
+                                side: BorderSide.none,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  side: BorderSide.none,
+                                )),
+                            child: _isEdited
+                                ? const Text('Save change',
+                                    style: TextStyle(color: Colors.white))
+                                : const Text('Edit profile',
+                                    style: TextStyle(color: Colors.white)),
+                          )),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(
+                height: 20,
+              ),
+              Center(
+                child: ElevatedButton(
+                  onPressed: () {
+                    logout(); // ฟังก์ชันที่ใช้ในการออกจากระบบ
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  const SizedBox(height: 20,),
-                  Center(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        logout(); // ฟังก์ชันที่ใช้ในการออกจากระบบ
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      child: const Text('Logout', style: TextStyle(color: Colors.white)),
-                    ),
-                  )
-                ],
-              ),
-            ),
-          )
-      ),
+                  child: const Text('Logout',
+                      style: TextStyle(color: Colors.white)),
+                ),
+              )
+            ],
+          ),
+        ),
+      )),
     );
   }
 
@@ -261,6 +334,4 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
-
 }
-

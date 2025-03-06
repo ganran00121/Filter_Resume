@@ -64,14 +64,14 @@ class _SigninScreenState extends State<SigninScreen> {
     );
 
     if (response.statusCode == 200 || response.statusCode == 201) {
-      // Login successful
+
       final Map<String, dynamic> data = jsonDecode(response.body);
       final String token = data['token'];
       final Map<String, dynamic> user = data['user'];
 
       final String userJson = jsonEncode(user);
 
-      // Store the token securely
+
       await _storage.write(key: 'auth_token', value: token);
       await _storage.write(key: 'user_data', value: userJson);
       String? storedToken = await _storage.read(key: 'auth_token'); // เรียก token
@@ -79,7 +79,7 @@ class _SigninScreenState extends State<SigninScreen> {
 
       print('API Response: ${response.body}');
 
-      // Show success dialog (optional, but good for user feedback)
+  
       showDialog(
         context: context,
         barrierDismissible: false,
