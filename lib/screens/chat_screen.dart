@@ -32,8 +32,6 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> fetchChatList() async {
     print('Fetching Chat List...');
     String baseUrl = dotenv.env['BASE_URL'] ?? 'https://default_url.com';
-    print('API baseUrl: $baseUrl');
-
     String? token = await _storage.read(key: 'auth_token');
     String? userData = await _storage.read(key: 'user_data');
 
@@ -45,7 +43,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
     Map<String, dynamic> userMap = json.decode(userData);
     int userId = userMap['id'];
-    print("Logged-in User ID: $userId");
+    String userType = userMap['user_type'];
+    print('UserType: $userType');
 
     Uri apiUri = Uri.parse('$baseUrl/api/messages/$userId');
 
@@ -60,19 +59,37 @@ class _ChatScreenState extends State<ChatScreen> {
         print('Received Messages: $jsonData');
 
         // Group messages by receiver ID
-        Map<int, String> receiverNames = {};
-        List<Chat> chatList = [];
+        Map<int, Map<String, dynamic>> groupedChats = {};
 
         for (var message in jsonData) {
           int receiverId = message["ReceiverID"] ?? 0;
-          String receiverName = message["Receiver"]["Name"] ?? "Unknown";
+          int senderId = message["SenderID"] ?? 0;
+          if (senderId == receiverId) continue;
 
-          if (!receiverNames.containsKey(receiverId)) {
-            receiverNames[receiverId] = receiverName;
-            chatList.add(
-                Chat(receiverId: receiverId, name: receiverName, image: ""));
+          int otherUserId = (senderId == userId) ? receiverId : senderId;
+          Map<String, dynamic> otherUser =
+          (senderId == userId) ? message["Receiver"] : message["Sender"];
+
+          if (!groupedChats.containsKey(otherUserId)) {
+            groupedChats[otherUserId] = {
+              "id": otherUserId,
+              "name": otherUser["Name"] ?? "Unknown",
+              "profileImage": otherUser["ProfileImage"] ??
+                  "assets/images/user_placeholder.png",
+              "lastMessage": message["MessageText"] ?? "",
+              "timestamp": message["CreatedAt"] ?? "",
+            };
           }
         }
+
+        // ✅ Convert the grouped data into a list for display
+        List<Chat> chatList = groupedChats.values.map((chat) {
+          return Chat(
+            receiverId: chat["id"],
+            name: chat["name"],
+            image: chat["profileImage"],
+          );
+        }).toList();
 
         setState(() {
           chats = chatList;
@@ -91,52 +108,56 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Chats"), backgroundColor: Colors.white),
-      body: isLoading
-          ? Center(child: CircularProgressIndicator())
-          : chats.isEmpty
-              ? Center(child: Text("No chats available"))
-              : ListView.builder(
-                  itemCount: chats.length,
-                  itemBuilder: (context, index) {
-                    final chat = chats[index];
-                    return Column(
+        appBar: AppBar(title: Text("Chats"), backgroundColor: Colors.white),
+        body: isLoading
+            ? Center(child: CircularProgressIndicator())
+            : chats.isEmpty
+            ? Center(child: Text("No chats available"))
+            : Container(
+          color: Colors.white,
+          child: ListView.builder(
+            itemCount: chats.length,
+            itemBuilder: (context, index) {
+              final chat = chats[index];
+              return Column(
+                children: [
+                  ListTile(
+                    contentPadding: EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 8),
+                    leading: CircleAvatar(
+                        backgroundImage: AssetImage(chat.image)),
+                    title: Text(chat.name),
+                    trailing: Icon(Icons.arrow_forward_ios),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              ChatDetailScreen(
+                                  receiverId: chat.receiverId,
+                                  receiverName: chat.name),
+                        ),
+                      );
+                    },
+                  ),
+                  Padding(
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
                       children: [
-                        ListTile(
-                          contentPadding:
-                              EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          leading: CircleAvatar(
-                              backgroundImage: AssetImage(chat.image)),
-                          title: Text(chat.name),
-                          trailing: Icon(Icons.arrow_forward_ios),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => ChatDetailScreen(
-                                    receiverId: chat.receiverId,
-                                    receiverName: chat.name),
-                              ),
-                            );
-                          },
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                  child: Divider(
-                                height: 1,
-                                color: Color(0xFFE0E0E0),
-                              ))
-                            ],
-                          ),
-                        ),
+                        Expanded(
+                            child: Divider(
+                              height: 1,
+                              color: Color(0xFFE0E0E0),
+                            ))
                       ],
-                    );
-                  },
-                ),
-    );
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ));
   }
 }
 
@@ -156,7 +177,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   bool isLoading = true;
   int userId = 0;
   TextEditingController messageController =
-      TextEditingController(); // Input field controller
+  TextEditingController(); // Input field controller
 
   @override
   void initState() {
@@ -191,37 +212,36 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         List<dynamic> jsonData = json.decode(response.body);
         print('Received Chat History: $jsonData');
 
-        // ✅ Filter messages only for this chat and remove duplicates
+        //
         Set<int> seenIds = {}; // Track message IDs to prevent duplicates
 
         setState(() {
           messages = jsonData
               .where((message) =>
-                  (message["SenderID"] == userId &&
-                      message["ReceiverID"] == widget.receiverId) ||
-                  (message["SenderID"] == widget.receiverId &&
-                      message["ReceiverID"] == userId))
+          (message["SenderID"] == userId &&
+              message["ReceiverID"] == widget.receiverId) ||
+              (message["SenderID"] == widget.receiverId &&
+                  message["ReceiverID"] == userId))
               .map((message) {
-                int messageId = message["ID"] ?? 0;
+            int messageId = message["ID"] ?? 0;
 
-                // ✅ Skip duplicate messages (messages with the same ID)
-                if (seenIds.contains(messageId)) {
-                  return null; // Skip this message
-                }
+            if (seenIds.contains(messageId)) {
+              return null; // Skip this message
+            }
 
-                seenIds.add(messageId); // Mark message as seen
+            seenIds.add(messageId); // Mark message as seen
 
-                return {
-                  "id": messageId,
-                  "sender_id": message["SenderID"] ?? 0,
-                  "receiver_id": message["ReceiverID"] ?? 0,
-                  "message_text": message["MessageText"] ?? "",
-                  "created_at": message["CreatedAt"] ?? "",
-                };
-              })
-              .where((message) => message != null) // ✅ Remove skipped messages
+            return {
+              "id": messageId,
+              "sender_id": message["SenderID"] ?? 0,
+              "receiver_id": message["ReceiverID"] ?? 0,
+              "message_text": message["MessageText"] ?? "",
+              "created_at": message["CreatedAt"] ?? "",
+            };
+          })
+              .where((message) => message != null) //
               .toList()
-              .cast<Map<String, dynamic>>(); // ✅ Ensure correct data type
+              .cast<Map<String, dynamic>>(); //
 
           isLoading = false;
         });
@@ -245,26 +265,48 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     }
 
     String messageText = messageController.text.trim();
-    messageController.clear(); // ✅ Clear input field immediately
+    messageController.clear();
 
-    // ✅ Add message instantly to UI before API call
+    // ✅ Add a placeholder message in the chat immediately
     Map<String, dynamic> newMessage = {
       "id": DateTime.now().millisecondsSinceEpoch, // Temporary unique ID
       "sender_id": userId,
       "receiver_id": widget.receiverId,
       "message_text": messageText,
       "created_at": DateTime.now().toString(),
+      "job_id": null, // Placeholder for job_id
     };
 
     setState(() {
-      messages.insert(0, newMessage); // ✅ Add message at the top
+      messages.insert(0, newMessage);
     });
 
-    Uri apiUri = Uri.parse('$baseUrl/api/messages');
+    Uri apiUriMessage = Uri.parse('$baseUrl/api/messages');
+    Uri apiUriJob = Uri.parse('$baseUrl/api/jobs/user/$userId/applications');
 
     try {
+      var resJob = await http.get(
+        apiUriJob,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      int latestJobId = 0;
+
+      if (resJob.statusCode == 200) {
+        List<dynamic> jobData = json.decode(resJob.body);
+        if (jobData.isNotEmpty) {
+          latestJobId = jobData.last["JobID"] ?? 0;
+        }
+      } else {
+        print("Failed to fetch job ID. Status: ${resJob.statusCode}");
+      }
+      print("Latest Job ID: $latestJobId");
+
       var response = await http.post(
-        apiUri,
+        apiUriMessage,
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -273,14 +315,17 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           "sender_id": userId,
           "receiver_id": widget.receiverId,
           "message_text": messageText,
+          "job_id": latestJobId,
         }),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         print("Message sent successfully!");
+        setState(() {
+          newMessage["job_id"] = latestJobId;
+        });
       } else {
         print("Failed to send message: ${response.body}");
-        // Optional: Remove message if API fails
       }
     } catch (e) {
       print("Error sending message: $e");
@@ -297,7 +342,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 CircleAvatar(
                   backgroundImage: AssetImage(''),
                 ),
-                SizedBox(width: 8,),
+                SizedBox(
+                  width: 8,
+                ),
                 Text(widget.receiverName)
               ],
             ),
@@ -306,76 +353,89 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       body: Column(
         children: [
           Expanded(
-            child: isLoading
-                ? Center(child: CircularProgressIndicator())
-                : messages.isEmpty
-                    ? Center(child: Text("No messages yet"))
-                    : ListView.builder(
-                        reverse: true,
-                        itemCount: messages.length,
-                        itemBuilder: (context, index) {
-                          final message = messages[index];
-                          bool isUser = message["sender_id"] == userId;
+              child: isLoading
+                  ? Center(child: CircularProgressIndicator())
+                  : messages.isEmpty
+                  ? Center(child: Text("No messages yet"))
+                  : Container(
+                  color: Colors.white,
+                  child: ListView.builder(
+                    reverse: true,
+                    itemCount: messages.length,
+                    itemBuilder: (context, index) {
+                      final message = messages[index];
+                      bool isUser = message["sender_id"] == userId;
 
-                          return Container(
-                            margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            child: Row(
-                              mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (!isUser)
-                                  Padding(padding: const EdgeInsets.only(right: 8.0),
-                                  child: CircleAvatar(
-                                    backgroundImage: AssetImage(''),
-                                    radius: 16,
-                                  ),
-                                  ),
-                                Expanded(
-                                  child: Container(
-                                    margin: EdgeInsets.symmetric(
-                                        vertical: 4, horizontal: 12),
-                                    padding: EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      color: isUser
-                                          ? Colors.orange[100]
-                                          : Color(0xFFF0F0F0),
-                                      borderRadius: BorderRadius.only(
-                                        topLeft: Radius.circular(isUser ? 10 : 0),
-                                        topRight: Radius.circular(isUser ? 0 : 10),
-                                        bottomLeft: Radius.circular(10),
-                                        bottomRight: Radius.circular(10),
-                                      ),
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          message["message_text"],
-                                          style: TextStyle(
-                                              fontSize: 16, color: Colors.black),
-                                        ),
-                                        SizedBox(height: 5),
-                                        Text(
-                                          message["created_at"],
-                                          style: TextStyle(
-                                              fontSize: 12, color: Colors.grey[600]),
-                                        ),
-                                      ],
-                                    ),
+                      return Container(
+                        margin: EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        child: Row(
+                          mainAxisAlignment: isUser
+                              ? MainAxisAlignment.end
+                              : MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (!isUser)
+                              Padding(
+                                padding: const EdgeInsets.only(right: 8.0),
+                                child: CircleAvatar(
+                                  backgroundImage: AssetImage(''),
+                                  radius: 16,
+                                ),
+                              ),
+                            Expanded(
+                              child: Container(
+                                margin: EdgeInsets.symmetric(
+                                    vertical: 4, horizontal: 12),
+                                padding: EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: isUser
+                                      ? Colors.orange[100]
+                                      : Color(0xFFF0F0F0),
+                                  borderRadius: BorderRadius.only(
+                                    topLeft:
+                                    Radius.circular(isUser ? 10 : 0),
+                                    topRight:
+                                    Radius.circular(isUser ? 0 : 10),
+                                    bottomLeft: Radius.circular(10),
+                                    bottomRight: Radius.circular(10),
                                   ),
                                 ),
-                                if (isUser)
-                                  Padding(padding: const EdgeInsets.only(left: 8.0),
-                                  child: CircleAvatar(
-                                    backgroundImage: AssetImage(''),
-                                    radius: 16,
-                                  ),
-                                  )
-                              ],
+                                child: Column(
+                                  crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      message["message_text"],
+                                      style: TextStyle(
+                                          fontSize: 16,
+                                          color: Colors.black),
+                                    ),
+                                    SizedBox(height: 5),
+                                    Text(
+                                      message["created_at"],
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[600]),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
-                          );
-                        },
-                      ),
+                            if (isUser)
+                              Padding(
+                                padding: const EdgeInsets.only(left: 8.0),
+                                child: CircleAvatar(
+                                  backgroundImage: AssetImage(''),
+                                  radius: 16,
+                                ),
+                              )
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+              )
           ),
           // Text Input & Send Button
           Container(
@@ -400,7 +460,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                         hintText: "Type a message...",
                         border: InputBorder.none,
                         contentPadding:
-                            EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+                        EdgeInsets.symmetric(vertical: 10, horizontal: 15),
                       ),
                     ),
                   ),
