@@ -610,7 +610,9 @@ class _JobDetailState extends State<JobDetail> {
       );
 
       if (response.statusCode == 200) {
-        print('Job updated successfully!');
+        print('Post updated successfully!');
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Post updated successfully!")));
         // _SuccessDialog(context, 'Post updated successfully');
         Navigator.pop(context, "updated");
       } else {
@@ -673,7 +675,9 @@ class _JobDetailState extends State<JobDetail> {
         },
       );
       if (response.statusCode == 200) {
-        print("Job deleted successfully!");
+        print("Post deleted successfully!");
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Post deleted successfully!")));
         // _SuccessDialog(context, 'Post deleted successfully');
         Navigator.pop(context, "deleted");
       } else {
@@ -1100,7 +1104,9 @@ class _CreatePostState extends State<CreatePost> {
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print('Job create successfully!');
+        print('Post create successfully!');
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Post create successfully!")));
         // _SuccessDialog(context, 'Post create successfully');
         Navigator.pop(context, "created");
       } else {

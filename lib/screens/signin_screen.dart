@@ -7,12 +7,14 @@ import 'home_screen.dart';
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart'; // Import SecureStorageService
 import '../main.dart'; // Import main.dart for MainScreen
+import 'reset_password_screen.dart';
 
 class SigninScreen extends StatefulWidget {
   final VoidCallback? onSwitchToSignup;
   final VoidCallback? onLoginSuccess;
 
-  SigninScreen({Key? key, this.onSwitchToSignup, this.onLoginSuccess}) : super(key: key);
+  SigninScreen({Key? key, this.onSwitchToSignup, this.onLoginSuccess})
+      : super(key: key);
 
   @override
   _SigninScreenState createState() => _SigninScreenState();
@@ -46,10 +48,9 @@ class _SigninScreenState extends State<SigninScreen> {
     if (!baseUrl.startsWith('http')) {
       baseUrl = 'https://$baseUrl';
     }
-    Uri apiUrl = Uri.parse(baseUrl).replace(path: '${Uri.parse(baseUrl).path}/auth/login');
+    Uri apiUrl = Uri.parse(baseUrl)
+        .replace(path: '${Uri.parse(baseUrl).path}/auth/login');
     print("URL : ${apiUrl}");
-
-
 
     // Use http.post to make the API request
     final response = await http.post(
@@ -64,22 +65,20 @@ class _SigninScreenState extends State<SigninScreen> {
     );
 
     if (response.statusCode == 200 || response.statusCode == 201) {
-
       final Map<String, dynamic> data = jsonDecode(response.body);
       final String token = data['token'];
       final Map<String, dynamic> user = data['user'];
 
       final String userJson = jsonEncode(user);
 
-
       await _storage.write(key: 'auth_token', value: token);
       await _storage.write(key: 'user_data', value: userJson);
-      String? storedToken = await _storage.read(key: 'auth_token'); // เรียก token
+      String? storedToken =
+          await _storage.read(key: 'auth_token'); // เรียก token
       print("login successful - token : $storedToken");
 
       print('API Response: ${response.body}');
 
-  
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -88,10 +87,12 @@ class _SigninScreenState extends State<SigninScreen> {
               onWillPop: () async => false, // Prevent back button
               child: AlertDialog(
                 backgroundColor: Colors.white,
-                title: Center(child: Icon(Icons.check_circle, color: Colors.green, size: 48.0)),
-                content: Text('Login Successful!\nWelcome back!', textAlign: TextAlign.center),
-              )
-          );
+                title: Center(
+                    child: Icon(Icons.check_circle,
+                        color: Colors.green, size: 48.0)),
+                content: Text('Login Successful!\nWelcome back!',
+                    textAlign: TextAlign.center),
+              ));
         },
       );
 
@@ -101,8 +102,6 @@ class _SigninScreenState extends State<SigninScreen> {
         Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => MainScreen()));
       });
-
-
     } else {
       // Login failed - Show error dialog
       showDialog(
@@ -114,7 +113,7 @@ class _SigninScreenState extends State<SigninScreen> {
             child: AlertDialog(
               title: Text('Login Failed'),
               content: Text(
-                'Incorrect email or password.  ${response.body}',  // Show API error
+                'Incorrect email or password.  ${response.body}', // Show API error
               ),
               actions: <Widget>[
                 TextButton(
@@ -131,12 +130,12 @@ class _SigninScreenState extends State<SigninScreen> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async => false, // Prevent back button and gesture
-      child: GestureDetector( // Add GestureDetector
+      child: GestureDetector(
+        // Add GestureDetector
         onVerticalDragUpdate: (details) {
           // Do nothing to prevent swipe down to dismiss
         },
@@ -144,9 +143,11 @@ class _SigninScreenState extends State<SigninScreen> {
           backgroundColor: Colors.white,
           body: SafeArea(
             child: SingleChildScrollView(
-              physics: const NeverScrollableScrollPhysics(),  // IMPORTANT: Disable scrolling
+              physics: const NeverScrollableScrollPhysics(),
+              // IMPORTANT: Disable scrolling
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 0, vertical: 10),
                 child: Container(
                   padding: EdgeInsets.all(40.0),
                   child: Column(
@@ -154,7 +155,8 @@ class _SigninScreenState extends State<SigninScreen> {
                       const SizedBox(height: 40),
                       Text(
                         'Welcome',
-                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            fontSize: 24, fontWeight: FontWeight.bold),
                       ),
                       SizedBox(height: 40),
                       Form(
@@ -175,20 +177,36 @@ class _SigninScreenState extends State<SigninScreen> {
                                   icon: _isObscured
                                       ? const Icon(Icons.visibility)
                                       : const Icon(Icons.visibility_off),
-                                  padding: const EdgeInsetsDirectional.only(end: 12),
+                                  padding:
+                                      const EdgeInsetsDirectional.only(end: 12),
                                 ),
                                 fillColor: Colors.white,
                                 filled: true,
                                 labelText: 'Password',
                                 border: OutlineInputBorder(),
                                 floatingLabelStyle:
-                                const TextStyle(color: Colors.black),
+                                    const TextStyle(color: Colors.black),
                                 focusedBorder: const OutlineInputBorder(
                                   borderSide:
-                                  BorderSide(width: 2, color: Colors.grey),
+                                      BorderSide(width: 2, color: Colors.grey),
                                 ),
                               ),
-                            )
+                            ),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => ResetPasswordScreen()),
+                                  );
+                                },
+                                child: Text(
+                                  'Forgot Password?',
+                                  style: TextStyle(color: Colors.blue),
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -236,10 +254,10 @@ class _SigninScreenState extends State<SigninScreen> {
                                 const SizedBox(width: 10),
                                 Expanded(
                                     child: Text(
-                                      'Google',
-                                      style: TextStyle(color: Color(0xFFE74C3C)),
-                                      textAlign: TextAlign.center,
-                                    )),
+                                  'Google',
+                                  style: TextStyle(color: Color(0xFFE74C3C)),
+                                  textAlign: TextAlign.center,
+                                )),
                               ],
                             ),
                           )),
