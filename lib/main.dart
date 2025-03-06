@@ -7,6 +7,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'screens/chat_screen.dart';
 import 'screens/company_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/favourite_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:convert';
 
@@ -47,6 +48,7 @@ class _MainScreenState extends State<MainScreen> {
     HomeScreen(),
     // ExploreScreen(),
     ChatScreen(),
+    FavouriteScreen(),
     // CompanyScreen(),
     ProfileScreen(),
     // SigninScreen(),
@@ -126,6 +128,13 @@ class _MainScreenState extends State<MainScreen> {
           child: Icon(Icons.chat, size: 32),
         ),
         label: 'Chat',
+      ),
+      BottomNavigationBarItem(
+        icon: Padding(
+          padding: EdgeInsets.only(top: 8),
+          child: Icon(Icons.favorite, size: 32),
+        ),
+        label: 'Favourite',
       ),
       if (_isCompanyType)
         BottomNavigationBarItem(
