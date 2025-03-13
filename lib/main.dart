@@ -1,5 +1,4 @@
 import 'dart:ffi';
-
 import 'screens/signin_screen.dart';
 import 'package:flutter/material.dart';
 import 'screens/home_screen.dart';
@@ -11,9 +10,12 @@ import 'screens/favourite_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:convert';
 
+/// Secure storage instance for authentication tokens.
 final FlutterSecureStorage _storage = FlutterSecureStorage();
 
+/// Main entry point for the Flutter application.
 Future<void> main() async {
+  /// Android secure storage options.
   AndroidOptions _getAndroidOptions() => const AndroidOptions(
     encryptedSharedPreferences: true,
   );
@@ -22,6 +24,7 @@ Future<void> main() async {
   runApp(MyApp());
 }
 
+/// The root widget of the application.
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -33,27 +36,29 @@ class MyApp extends StatelessWidget {
   }
 }
 
+/// The main screen containing bottom navigation.
 class MainScreen extends StatefulWidget {
   @override
   _MainScreenState createState() => _MainScreenState();
 }
 
+/// The _MainScreenState _MainScreenState _MainScreenState _MainScreenState screen containing bottom navigation.
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
-  final _storage = FlutterSecureStorage(); // Create storage instance here
-  bool _isLoading = true; // Add a loading state
+  final _storage = FlutterSecureStorage();
+  bool _isLoading = true;
   bool _isLoggedIn = false;
   bool _isCompanyType = false;
+
+  /// List of pages shown in the bottom navigation bar.
   List<Widget> _pages = [
     HomeScreen(),
-    // ExploreScreen(),
     ChatScreen(),
     FavouriteScreen(),
-    // CompanyScreen(),
     ProfileScreen(),
-    // SigninScreen(),
   ];
 
+  /// Handles bottom navigation item selection.
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
@@ -63,9 +68,10 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
-    _checkLoginStatus(); // Call a separate async function
+    _checkLoginStatus();
   }
 
+  /// Checks if the user is authenticated and updates UI accordingly.
   Future<void> _checkLoginStatus() async {
     String? storedToken = await _storage.read(key: 'auth_token');
     Map<String, String> user = await _storage.readAll();
@@ -74,36 +80,25 @@ class _MainScreenState extends State<MainScreen> {
     if (UserData != null && UserData.isNotEmpty) {
       try {
         Map<String, dynamic> userData = jsonDecode(UserData);
-        print("user Data ${userData}");
-        if (userData != null && userData["user_type"] == "company") {
+        if (userData["user_type"] == "company") {
           _pages.insert(2, CompanyScreen());
           _isCompanyType = true;
         }
       } catch (e) {
         print("Error decoding user data: $e");
       }
-    } else {
-      print("No stored user data found");
     }
+
     setState(() {
       _isLoading = false;
-      if (storedToken != null) {
-        _isLoggedIn = true;
-        print("isLoggedIn = true - token : $storedToken");
-        print("userinfo : ${user}");
-      } else {
-        _isLoggedIn = false;
-        print("isLoggedIn = false - token : $storedToken");
-        print("userinfo : ${user}");
-      }
+      _isLoggedIn = storedToken != null;
     });
 
-    // if (true) {
     if (storedToken == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         showModalBottomSheet(
           context: context,
-          isScrollControlled: true, // Allow the sheet to be full screen
+          isScrollControlled: true,
           builder: (BuildContext context) {
             return SigninPopup();
           },
@@ -114,6 +109,23 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return Scaffold(
+      body: _pages[_selectedIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        items: _buildBottomNavItems(),
+        currentIndex: _selectedIndex,
+        selectedItemColor: Colors.orange,
+        unselectedItemColor: Colors.grey,
+        showUnselectedLabels: true,
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: Colors.white,
+        onTap: _onItemTapped,
+      ),
+    );
+  }
+
+  /// Builds the bottom navigation bar items dynamically.
+  List<BottomNavigationBarItem> _buildBottomNavItems() {
     List<BottomNavigationBarItem> bottomNavItems = [
       BottomNavigationBarItem(
         icon: Padding(
@@ -144,7 +156,6 @@ class _MainScreenState extends State<MainScreen> {
         ),
         label: 'Favourite',
       ),
-
       BottomNavigationBarItem(
         icon: Padding(
           padding: EdgeInsets.only(top: 8),
@@ -153,34 +164,20 @@ class _MainScreenState extends State<MainScreen> {
         label: 'Profile',
       ),
     ];
-
-    return Scaffold(
-      body: _pages[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        items: bottomNavItems,
-        currentIndex: _selectedIndex,
-        selectedItemColor: Colors.orange,
-        unselectedItemColor: Colors.grey,
-        showUnselectedLabels: true,
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.white,
-        onTap: _onItemTapped,
-      ),
-    );
+    return bottomNavItems;
   }
 }
 
-// SigninPopup Widget
+/// Sign-in popup modal for unauthenticated users.
 class SigninPopup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-        onWillPop: () async => false, // Prevent back button and gesture
-        child: Container(
-          height: MediaQuery.of(context)
-              .size
-              .height, // Set the height to full screen
-          child: SigninScreen(), // Use your existing SigninScreen here
-        ));
+      onWillPop: () async => false,
+      child: Container(
+        height: MediaQuery.of(context).size.height,
+        child: SigninScreen(),
+      ),
+    );
   }
 }
