@@ -16,10 +16,10 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 /// A screen that allows users to reset their password.
 class ResetPasswordScreen extends StatefulWidget {
   @override
-  _ResetPasswordScreenState createState() => _ResetPasswordScreenState();
+  ResetPasswordScreenState createState() => ResetPasswordScreenState();
 }
 
-class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
+class ResetPasswordScreenState extends State<ResetPasswordScreen> {
   /// Controller for the email input field.
   final TextEditingController _emailController = TextEditingController();
 
