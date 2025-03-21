@@ -1,3 +1,11 @@
+/// @author Piriya Surinpao
+/// 
+/// @student_id 640510673
+/// 
+/// @feature รายการโปรด (Favourites)
+/// 
+/// @description ผู้ใช้สามารถบันทึก ลบ และดูรายการงานที่บันทึกไว้ได้
+/// 
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -9,23 +17,28 @@ import 'dart:convert';
 
 final _storage = FlutterSecureStorage();
 
+/// Displays the Favourite main job listing screen.
 class FavouriteScreen extends StatefulWidget {
   @override
-  _FavouriteScreenState createState() => _FavouriteScreenState();
+  FavouriteScreenState createState() => FavouriteScreenState();
 }
 
-class _FavouriteScreenState extends State<FavouriteScreen> with WidgetsBindingObserver {
-
+/// Manages the state for the FavouriteScreen widget.
+class FavouriteScreenState extends State<FavouriteScreen> with WidgetsBindingObserver {
+  /// List of all favorite jobs fetched from storage.
   List<Job> jobs = [];
+  /// List of favorite jobs filtered based on the search query.
   List<Job> filteredJobs = [];
+  /// Indicates whether the data is being loaded.
   bool isLoading = true;
+  /// Stores the current search query.
   String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    fetchData();
+    fetchData(); // Fetch favorite jobs from storage when the screen initializes.
   }
 
   @override
@@ -36,20 +49,23 @@ class _FavouriteScreenState extends State<FavouriteScreen> with WidgetsBindingOb
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Reload data when the app resumes from background.
     if (state == AppLifecycleState.resumed) {
       fetchData();
     }
   }
 
+  /// Fetches favorite job data from secure storage.
   Future<void> fetchData() async {
   setState(() => isLoading = true);
   try {
+    // Retrieve all key-value pairs from secure storage and filter for job data.
     List<String>? savedJobsJson = await _storage.readAll().then((map) {
       return map.values
           .where((value) => value.contains('job'))
           .toList();
     });
-    print("savedJobsJson : ${savedJobsJson} " );
+    // If favorite jobs are found, decode and display them.
     if (savedJobsJson != null && savedJobsJson.isNotEmpty) {
       List<Job> fetchedJobs = savedJobsJson
           .map((jsonString) => Job.fromJson(jsonDecode(jsonString)))
@@ -60,27 +76,32 @@ class _FavouriteScreenState extends State<FavouriteScreen> with WidgetsBindingOb
         isLoading = false;
       });
     } else {
+      // If no favorite jobs are found, update the state and print a message.
       setState(() {
         isLoading = false;
       });
       print("No jobs found in storage.");
     }
   } catch (e) {
+    // Handle errors during data retrieval.
     print('Error fetching jobs from storage: $e');
     setState(() => isLoading = false);
   }
 }
-
+  /// Filters the job list based on the search query.
   List<Job> _filterJobs(String query) {
     if (query.isEmpty) {
+      // If the search query is empty, show all jobs.
       return jobs;
     } else {
+      // Filter jobs by title.
       return jobs
           .where((job) => job.title.toLowerCase().contains(query.toLowerCase()))
           .toList();
     }
   }
 
+  /// Updates the search query and filters the job list.
   void _updateSearchQuery(String query) {
     setState(() {
       _searchQuery = query;
@@ -147,18 +168,39 @@ class _FavouriteScreenState extends State<FavouriteScreen> with WidgetsBindingOb
   }
 }
 
+/// Represents a job object.
 class Job {
+  /// The unique identifier of the job.
   final int id;
+
+  /// The title of the job.
   final String title;
+
+  /// The description of the job.
   final String description;
+
+  /// The location of the job.
   final String location;
+
+  /// The salary range for the job.
   final String salaryRange;
+
+  /// The quantity of job openings.
   final int quantity;
+
+  /// The position of the job.
   final String jobPosition;
+
+  /// The status of the job.
   final bool status;
+
+  /// The creation timestamp of the job.
   final String createdAt;
+
+  /// The last update timestamp of the job.
   final String updatedAt;
 
+  /// Creates a Job object.
   Job({
     required this.id,
     required this.title,
@@ -172,21 +214,23 @@ class Job {
     required this.updatedAt,
   });
 
+  /// Creates a Job object from JSON data.
   factory Job.fromJson(Map<String, dynamic> json) {
     return Job(
-      id: json['id'] ?? 0, // แก้จาก 'ID' เป็น 'id' และใช้ ?? 0 กัน null
-      title: json['title'] ?? '',
-      description: json['description'] ?? '',
-      location: json['location'] ?? '',
-      salaryRange: json['salary_range'] ?? json['salaryRange'] ?? '',
-      quantity: json['quantity'] ?? 0, // ใช้ ?? 0 กัน null
-      jobPosition: json['job_position'] ?? json['jobPosition'] ?? '',
-      status: json['status'] ?? false, // ถ้า null ให้เป็น false
-      createdAt: json['created_at'] ?? '',
-      updatedAt: json['updated_at'] ?? '',
+      id: json['id'] ?? 0, // Use 0 as default value if 'id' is null.
+      title: json['title'] ?? '', // Use empty string as default value if 'title' is null.
+      description: json['description'] ?? '', // Use empty string as default value if 'description' is null.
+      location: json['location'] ?? '', // Use empty string as default value if 'location' is null.
+      salaryRange: json['salary_range'] ?? json['salaryRange'] ?? '', // Use empty string as default value if 'salary_range' is null.
+      quantity: json['quantity'] ?? 0, // Use 0 as default value if 'quantity' is null.
+      jobPosition: json['job_position'] ?? json['jobPosition'] ?? '', // Use empty string as default value if 'job_position' is null.
+      status: json['status'] ?? false, // Use false as default value if 'status' is null.
+      createdAt: json['created_at'] ?? '', // Use empty string as default value if 'created_at' is null.
+      updatedAt: json['updated_at'] ?? '', // Use empty string as default value if 'updated_at' is null.
     );
   }
 
+  /// Converts the Job object to JSON format.
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -199,16 +243,18 @@ class Job {
     };
   }
 }
-
+/// Displays a card representing a single job.
 class JobCard extends StatelessWidget {
+  /// The job to display.
   final Job job;
-
+  /// Creates a JobCard widget.
   JobCard({required this.job});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
+        // Navigate to the job detail screen when tapped.
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -309,7 +355,7 @@ class JobCard extends StatelessWidget {
       ),
     );
   }
-
+  /// Builds a row to display an icon and text information.
   Widget _buildInfo(IconData icon, String text) {
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -329,23 +375,29 @@ class JobCard extends StatelessWidget {
   }
 }
 
+/// Represents the screen to display detailed information about a job.
 class JobDetailScreen extends StatefulWidget {
+  /// The job to display details for.
   final Job job;
+
+  /// Creates a JobDetailScreen widget.
   JobDetailScreen({required this.job});
 
   @override
-  _JobDetailScreenState createState() => _JobDetailScreenState();
+  JobDetailScreenState createState() => JobDetailScreenState();
 }
 
-class _JobDetailScreenState extends State<JobDetailScreen> {
+class JobDetailScreenState extends State<JobDetailScreen> {
+  /// Indicates whether the job is saved by the user.
   bool isSaved = false;
 
   @override
   void initState() {
     super.initState();
-    _checkIfJobSaved();
+    _checkIfJobSaved();// Check if the job is saved when the screen initializes.
   }
 
+  /// Checks if the job is already saved in secure storage.
   Future<void> _checkIfJobSaved() async {
     String? savedJob = await _storage.read(key: 'saved_job_${widget.job.id}');
     if (savedJob != null) {
@@ -354,7 +406,7 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
       });
     }
   }
-
+  /// Saves the job to secure storage.
   Future<void> saveJob() async {
     try {
       String jobJson = jsonEncode(widget.job.toJson());
@@ -590,21 +642,32 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
   }
 }
 
+/// Displays a card that shows the job in detail.
 class UploadResumeScreen extends StatefulWidget {
+  /// The ID of the job for which the resume is being uploaded.
   final int jobId; // เพิ่มตัวแปรเก็บ jobId
 
+  /// Creates an [UploadResumeScreen].
+  ///
+  /// The [jobId] parameter is required and represents the ID of the job
   const UploadResumeScreen(this.jobId, {Key? key}) : super(key: key);
 
   @override
-  _UploadResumeScreenState createState() => _UploadResumeScreenState();
+  UploadResumeScreenState createState() => UploadResumeScreenState();
 }
 
-class _UploadResumeScreenState extends State<UploadResumeScreen> {
+/// The state of the [UploadResumeScreen] widget.
+class UploadResumeScreenState extends State<UploadResumeScreen> {
+  /// Indicates whether the file upload is in progress.
   bool isLoading = false;
+  /// The selected file to be uploaded.
   File? selectedFile;
+  /// The name of the selected file.
   String? fileName;
+  /// The status message to display after the upload attempt.
   String? uploadStatusMessage;
 
+  /// Allows the user to pick a PDF file from their device.
   Future<void> pickFile() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -619,6 +682,7 @@ class _UploadResumeScreenState extends State<UploadResumeScreen> {
     }
   }
 
+  /// Uploads the selected file to the server.
   Future<void> uploadFile() async {
     if (selectedFile == null) return;
 

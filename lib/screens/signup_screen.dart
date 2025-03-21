@@ -11,23 +11,43 @@ import '../main.dart'; // Import main.dart
 
 class SignupScreen extends StatefulWidget {
   @override
-  _SignupScreenState createState() => _SignupScreenState();
+  SignupScreenState createState() => SignupScreenState();
 }
-
+/// Enum to represent the selected user type (personal or company).
 enum SelectedType { personal, company }
 
-class _SignupScreenState extends State<SignupScreen> with WidgetsBindingObserver {
+class SignupScreenState extends State<SignupScreen> with WidgetsBindingObserver {
+  /// The selected user type (personal or company).
   SelectedType _character = SelectedType.personal;
+
+  /// Controller for the firstname input field.
   final TextEditingController _firstname = TextEditingController();
+
+  /// Controller for the lastname input field.
   final TextEditingController _lastname = TextEditingController();
+
+  /// Controller for the email input field.
   final TextEditingController _emailController = TextEditingController();
+
+  /// Controller for the password input field.
   final TextEditingController _passwordController = TextEditingController();
+
+  /// Controller for the confirm password input field.
   final TextEditingController _confirmPasswordController = TextEditingController();
+
+  /// Controller for the phone number input field.
   final TextEditingController _phoneNumber = TextEditingController();
+
+  /// Controller for the company name input field.
   final TextEditingController _companyName = TextEditingController();
+
+  /// Controller for the company phone number input field.
   final TextEditingController _companyPhoneNumber = TextEditingController();
 
+  /// Boolean to toggle password visibility.
   var _isObscured;
+
+  /// Boolean to toggle confirm password visibility.
   var _isConfirmObscured;
 
   @override
@@ -46,10 +66,12 @@ class _SignupScreenState extends State<SignupScreen> with WidgetsBindingObserver
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      // fetchData();
+      // fetchData(); // You might have other logic here on app resume.
     }
   }
 
+  /// Handles login after successful signup.
+  /// Sends login details to the API, stores the token, and navigates to the main screen.
   Future<void> _loginAfterSignup(String email, String password) async {
     String baseUrl = dotenv.env['BASE_URL'] ?? 'default_url';
     if (!baseUrl.startsWith('http')) {
@@ -71,10 +93,10 @@ class _SignupScreenState extends State<SignupScreen> with WidgetsBindingObserver
     if (response.statusCode == 200 || response.statusCode == 201) {
       final Map<String, dynamic> data = jsonDecode(response.body);
 
-      // 2. Access the token from the decoded data:
+      // Access the token from the decoded data:
       final String token = data['token'];
 
-      // 3. Securely store the token
+      // Securely store the token
       final _storage = FlutterSecureStorage();
       await _storage.write(key: 'auth_token', value: token);
       String? storedToken = await _storage.read(key: 'auth_token'); // เรียก token
@@ -122,7 +144,8 @@ class _SignupScreenState extends State<SignupScreen> with WidgetsBindingObserver
       );
     }
   }
-
+/// Handles user registration by sending registration details to the API.
+  /// On success, shows a success dialog and calls _loginAfterSignup to log the user in.
   Future<void> registerPost() async {
     print('registerPost');
     String baseUrl = dotenv.env['BASE_URL'] ?? 'default_url';

@@ -21,10 +21,10 @@ class SigninScreen extends StatefulWidget {
       : super(key: key);
 
   @override
-  _SigninScreenState createState() => _SigninScreenState();
+  SigninScreenState createState() => SigninScreenState();
 }
 
-class _SigninScreenState extends State<SigninScreen> {
+class SigninScreenState extends State<SigninScreen> {
   /// Controller for the email input field.
   final TextEditingController _emailController = TextEditingController();
   /// Controller for the password input field.

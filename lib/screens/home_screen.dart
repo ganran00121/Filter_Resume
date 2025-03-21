@@ -1,4 +1,11 @@
-
+/// @author Ackarapon Muenrach 
+/// 
+/// @student_id 640510689
+/// 
+/// @feature ค้นหา Job (Search)
+/// 
+/// @description ผู้ใช้สามารถค้นหา Job ตามหัวข้อ Job ได้
+/// 
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -8,17 +15,24 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path/path.dart';
 import 'dart:convert';
 
+/// Instance of the secure storage for storing sensitive data.
 final _storage = FlutterSecureStorage();
 
+/// Displays the main job listing screen.
 class HomeScreen extends StatefulWidget {
   @override
-  _HomeScreenState createState() => _HomeScreenState();
+  HomeScreenState createState() => HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+/// Manages the state for the HomeScreen widget.
+class HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+  /// List of all jobs fetched from the API.
   List<Job> jobs = [];
+  /// List of jobs filtered based on the search query.
   List<Job> filteredJobs = [];
+  /// Indicates whether the data is being loaded.
   bool isLoading = true;
+  /// Stores the current search query.
   String _searchQuery = '';
 
   @override
@@ -41,6 +55,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
+  /// Fetches job data from the API.
   Future<void> fetchData() async {
     setState(() => isLoading = true);
     String baseUrl = dotenv.env['BASE_URL'] ?? 'default_url';
@@ -86,6 +101,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
+  /// Filters the job list based on the search query.
   List<Job> _filterJobs(String query) {
     if (query.isEmpty) {
       return jobs; // ถ้าคำค้นหาเป็นค่าว่าง ให้แสดงรายการงานทั้งหมด
@@ -96,6 +112,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
+  /// Updates the search query and filters the job list.
   void _updateSearchQuery(String query) {
     setState(() {
       _searchQuery = query;
@@ -145,7 +162,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     : jobs == null
                         ? Center(
                             child: Text(
-                                "Failed to load jobs or no job at the moment."), // แสดงข้อความเมื่อ jobs เป็น null
+                                "Failed   to load jobs or no job at the moment."), // แสดงข้อความเมื่อ jobs เป็น null
                           )
                         : ListView.builder(
                             itemCount: filteredJobs.length,
@@ -162,6 +179,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 }
 
+/// Represents a job object.
 class Job {
   final int id;
   final String title;
@@ -187,6 +205,7 @@ class Job {
     required this.updatedAt,
   });
 
+  /// Creates a Job object from JSON data.
   factory Job.fromJson(Map<String, dynamic> json) {
     return Job(
       id: json['id'] ?? 0, // แก้จาก 'ID' เป็น 'id' และใช้ ?? 0 กัน null
@@ -202,6 +221,7 @@ class Job {
     );
   }
 
+  /// Converts the Job object to JSON format.
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -215,6 +235,7 @@ class Job {
   }
 }
 
+/// Displays a card representing a single job.
 class JobCard extends StatelessWidget {
   final Job job;
 
@@ -343,9 +364,15 @@ class JobCard extends StatelessWidget {
     );
   }
 }
-
+/// Represents the screen to display detailed information about a job.
+///
+/// This screen shows the job title, description, location, salary, and allows the user to save the job or apply for it.
 class JobDetailScreen extends StatefulWidget {
+
   final Job job;
+  /// Creates a [JobDetailScreen].
+  ///
+  /// The [job] parameter must not be null.
   JobDetailScreen({required this.job});
 
   @override
@@ -353,6 +380,7 @@ class JobDetailScreen extends StatefulWidget {
 }
 
 class _JobDetailScreenState extends State<JobDetailScreen> {
+  /// Indicates whether the job is saved by the user.
   bool isSaved = false;
 
   @override
@@ -361,6 +389,7 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
     _checkIfJobSaved();
   }
 
+  /// Checks if the job is already saved in secure storage.
   Future<void> _checkIfJobSaved() async {
     String? savedJob = await _storage.read(key: 'saved_job_${widget.job.id}');
     if (savedJob != null) {
@@ -370,6 +399,7 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
     }
   }
 
+  /// Saves the job to secure storage.
   Future<void> saveJob() async {
     try {
       String jobJson = jsonEncode(widget.job.toJson());
@@ -386,7 +416,9 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
       } else {
         print("No job found in storage.");
       }
-    } catch (e) {}
+    } catch (e) {
+      // Consider adding error handling for the save operation.
+    }
   }
 
   @override
@@ -605,21 +637,32 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
   }
 }
 
+/// Displays a card that shows the job in detail.
 class UploadResumeScreen extends StatefulWidget {
+  /// The ID of the job for which the resume is being uploaded.
   final int jobId; // เพิ่มตัวแปรเก็บ jobId
 
+  /// Creates an [UploadResumeScreen].
+  ///
+  /// The [jobId] parameter is required and represents the ID of the job
   const UploadResumeScreen(this.jobId, {Key? key}) : super(key: key);
 
   @override
-  _UploadResumeScreenState createState() => _UploadResumeScreenState();
+  UploadResumeScreenState createState() => UploadResumeScreenState();
 }
 
-class _UploadResumeScreenState extends State<UploadResumeScreen> {
+/// The state of the [UploadResumeScreen] widget.
+class UploadResumeScreenState extends State<UploadResumeScreen> {
+  /// Indicates whether the file upload is in progress.
   bool isLoading = false;
+  /// The selected file to be uploaded.
   File? selectedFile;
+  /// The name of the selected file.
   String? fileName;
+  /// The status message to display after the upload attempt.
   String? uploadStatusMessage;
 
+  /// Allows the user to pick a PDF file from their device.
   Future<void> pickFile() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -634,6 +677,7 @@ class _UploadResumeScreenState extends State<UploadResumeScreen> {
     }
   }
 
+  /// Uploads the selected file to the server.
   Future<void> uploadFile() async {
     if (selectedFile == null) return;
 
