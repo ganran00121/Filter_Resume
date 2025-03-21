@@ -20,3 +20,6 @@ A Flutter application for advanced resume filtering with AI Gemini.
 3.  **Install Dependencies**: Run `go mod tidy` to install all dependencies.
 4.  **Run the Backend**: Run `go run cmd/main.go` to start the backend.
 5.  **Verify IP**: Ensure that the Frontend and Backend use the same IP address (connected on the same network) and configure the correct IP in the `.env` file of the Frontend.
+
+
+## File Document Design อยู่ใน Repo ชื่อไฟล์ว่า Document Design.pdf
