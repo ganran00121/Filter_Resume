@@ -1,3 +1,11 @@
+/// @author Sirawit Mano
+///
+/// @student_id 640510685
+///
+/// @feature Edit profile (แก้ไขโปรไฟล์)
+///
+/// @description ผู้ใช้สามารถค้นหาจัดการ Profile ของตนเองได้
+///
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import './signin_screen.dart';
@@ -5,13 +13,19 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+/// Instance of the secure storage for storing sensitive data.
 final _storage = FlutterSecureStorage();
 
+/// Controller for the name input field.
 TextEditingController nameController = TextEditingController();
+/// Controller for the email input field.
 TextEditingController emailController = TextEditingController();
+/// Controller for the phone number input field.
 TextEditingController phoneController = TextEditingController();
+/// Controller for the name user type field.
 TextEditingController userTypeController = TextEditingController();
 
+/// Represents the user's profile data.
 class Profile {
   final int id;
   final String name;
@@ -29,9 +43,10 @@ class Profile {
     required this.company_name,
   });
 
+  /// Creates a [Profile] instance from a JSON map.
   factory Profile.fromJson(Map<String, dynamic> json) {
     return Profile(
-      id: json['id'] ?? 0, // แก้จาก 'ID' เป็น 'id' และใช้ ?? 0 กัน null
+      id: json['id'] ?? 0,
       name: json['name'] ?? '',
       email: json['email'] ?? '',
       phone: json['phone'] ?? '',
@@ -41,15 +56,21 @@ class Profile {
   }
 }
 
+/// A StatefulWidget that displays and edits the user's profile.
 class ProfileScreen extends StatefulWidget {
   @override
-  _ProfileScreenState createState() => _ProfileScreenState();
+  ProfileScreenState createState() => ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+/// State for the [ProfileScreen] widget.
+class ProfileScreenState extends State<ProfileScreen> {
+  /// Stores the user's profile data.
   Map<String, dynamic>? userProfile;
+  /// Indicates whether the data is being loaded.
   bool isLoading = true;
+  /// Indicates whether the profile is in edit mode.
   var _isEdited;
+  /// Stores the user's type.
   String userType = '';
 
   @override
@@ -57,24 +78,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.initState();
     _isEdited = false;
     fetchData();
+    //fetch user's profile data
   }
 
+  /// Logs the user out by clearing secure storage and navigating to the sign-in screen.
   void logout() async {
-    await _storage.deleteAll();
+    await _storage.deleteAll(); // Clear all data from secure storage
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (context) => SigninScreen()),
-          (route) => false,
+          (route) => false, // Remove all previous routes from the stack
     );
   }
 
+  /// Fetches user profile data from secure storage and updates the UI.
   Future<void> fetchData() async {
     setState(() => isLoading = true);
-    Map<String, String> storedData = await _storage.readAll();
+    Map<String, String> storedData = await _storage.readAll(); // Read all data from secure storage
 
-    String? storedToken = storedData["user_data"];
+    String? storedToken = storedData["user_data"];  // Get the user data token
 
-
+    //If have stored token set each controller match user's data
     if (storedToken != null && storedToken.isNotEmpty) {
       try {
         Map<String, dynamic> userData = jsonDecode(storedToken);
@@ -99,19 +123,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   }
 
+  /// Updates the user's profile data on the server and in secure storage.
   Future<void> updateProfile(Profile updatedProfile) async {
     String baseUrl = dotenv.env['BASE_URL'] ?? 'default_url';
 
     if (!baseUrl.startsWith('http')) {
-      baseUrl = 'https://$baseUrl';
+      baseUrl = 'https://$baseUrl'; // Ensure the base URL starts with http or https
     }
 
-    String? token = await _storage.read(key: 'auth_token');
+    String? token = await _storage.read(key: 'auth_token'); // Get the authentication token
 
-    Uri apiUri = Uri.parse("$baseUrl/api/user/profile");
-
-    print(token);
-    print(apiUri);
+    Uri apiUri = Uri.parse("$baseUrl/api/user/profile"); // Construct the API URI
 
     try {
       var response = await http.put(
