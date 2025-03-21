@@ -1,3 +1,8 @@
+/// @main feature: Company Post Management
+///
+/// @description: Allows company users to create, edit, and delete job postings.
+///
+
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
@@ -6,28 +11,33 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'chat_company_screen.dart';
 
+/// StatefulWidget that displays company information, including job listings.
 class CompanyScreen extends StatefulWidget {
   @override
   _CompanyScreenState createState() => _CompanyScreenState();
 }
 
+/// Secure storage instance for storing sensitive data.
 final FlutterSecureStorage _storage = FlutterSecureStorage();
+/// Counter variable (currently unused).
 int _count = 0;
 
-
-final quill.QuillController _controller = quill.QuillController.basic();
-
+/// State for the [CompanyScreen] widget.
 class _CompanyScreenState extends State<CompanyScreen> {
+  /// List to store fetched jobs.
   List<Job> jobs = [];
+  /// Indicates whether data is being loaded.
   bool isLoading = true;
+  /// Stores the company name.
   String companyName = '';
 
   @override
   void initState() {
     super.initState();
-    fetchData();
+    fetchData(); // Fetch data when the state is initialized.
   }
 
+  /// Fetches job data from the API based on the user's company ID.
   Future<Job?> fetchData() async {
     setState(() => isLoading = true);
     print('FetchData');
@@ -71,19 +81,13 @@ class _CompanyScreenState extends State<CompanyScreen> {
         List<dynamic> jsonData = json.decode(response.body);
         print('Json data : $jsonData');
 
-
-
         List<Job> fetchedJobs = jsonData.map((data) => Job.fromJson(data)).toList();
         // Update the TextEditingController with the job title or any other field
         setState(() {
           jobs = fetchedJobs;
           isLoading = false;
         });
-        // _test.text = job.title;
-        //
-        // print('API Response: ${jsonData}');
-        // print('Job Title: ${job.title}');
-        // return job;
+
       } else {
         print('Failed to load data. Status code: ${response.statusCode}');
       }
@@ -100,25 +104,10 @@ class _CompanyScreenState extends State<CompanyScreen> {
       image: "assets/images/opendurian.png",
     )
   ];
-  // final List<Job> jobs = [
-  //   Job(
-  //     id: 1,
-  //     title: "Full Stack Developer (WFH) [J108]",
-  //     company: "OpenDurian Co., Ltd.",
-  //     location: "จตุจักร กรุงเทพมหานคร",
-  //     salary: "25,000 - 40,000 per month",
-  //     people: 2,
-  //     position: "Full Stack Developer",
-  //     image: "assets/images/opendurian.png",
-  //     applicant_count: "3",
-  //     description: "\nlorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt\n\nRequirement\n\nlorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt\n\nAdditional\n\nlorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt",
-  //   )
-  // ];
-
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      fetchData();
+      fetchData(); // Refetch data when the app resumes.
     }
   }
 
@@ -217,6 +206,7 @@ class _CompanyScreenState extends State<CompanyScreen> {
   }
 }
 
+/// Represents a company with a name, location, and image.
 class Company {
   final String name, location, image;
 
@@ -227,6 +217,7 @@ class Company {
   });
 }
 
+/// Represents a job with details like title, description, etc.
 class Job {
   final int id;
   final String title;
@@ -256,6 +247,7 @@ class Job {
     required this.updatedAt,
   });
 
+  /// Creates a [Job] instance from a JSON map.
   factory Job.fromJson(Map<String, dynamic> json) {
     return Job(
       id: json['id'] ?? 0, // แก้จาก 'ID' เป็น 'id' และใช้ ?? 0 กัน null
@@ -274,9 +266,12 @@ class Job {
   }
 }
 
+/// A StatelessWidget that displays company information in a card format.
 class CompanyCard extends StatelessWidget {
+  /// The company data to display.
   final Company company;
 
+  /// Constructor for [CompanyCard].
   CompanyCard({required this.company});
 
   @override
@@ -333,14 +328,18 @@ class CompanyCard extends StatelessWidget {
   }
 }
 
+/// A StatefulWidget that displays job information in a card format.
 class JobCard extends StatefulWidget {
+  /// The job data to display.
   final Job job;
+  /// Constructor for [JobCard].
   JobCard({required this.job});
 
   @override
   _JobCardState createState() => _JobCardState();
 }
 
+/// State for the [JobCard] widget.
 class _JobCardState extends State<JobCard> {
   @override
   Widget build(BuildContext context) {
@@ -553,21 +552,35 @@ class _JobCardState extends State<JobCard> {
   }
 }
 
-// TODO: add detail of company
+/// StatefulWidget that displays detailed job information and allows editing/deletion.
 class JobDetail extends StatefulWidget {
+  /// The job data to display and edit.
   final Job job;
+  /// Constructor for [JobDetail].
   JobDetail({required this.job});
 
   @override
   _JobDetailState createState() => _JobDetailState();
 }
 
+/// State for the [JobDetail] widget.
 class _JobDetailState extends State<JobDetail> {
+  /// Controller for the job title input field.
   final TextEditingController _title = TextEditingController();
+
+  /// Controller for the job location input field.
   final TextEditingController _location = TextEditingController();
+
+  /// Controller for the job salary input field.
   final TextEditingController _salary = TextEditingController();
+
+  /// Controller for the number of people needed input field.
   final TextEditingController _people = TextEditingController();
+
+  /// Controller for the job position input field.
   final TextEditingController _position = TextEditingController();
+
+  /// Controller for the job description input field.
   final TextEditingController _description = TextEditingController();
 
   @override
@@ -581,6 +594,7 @@ class _JobDetailState extends State<JobDetail> {
     _description.text = widget.job.description;
   }
 
+  /// Updates the job information on the server.
   Future<void> updatePost(int jobId, Job updatedPost) async {
     String baseUrl = dotenv.env['BASE_URL'] ?? 'default_url';
 
@@ -614,7 +628,7 @@ class _JobDetailState extends State<JobDetail> {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text("Post updated successfully!")));
         // _SuccessDialog(context, 'Post updated successfully');
-        Navigator.pop(context, "updated");
+        Navigator.pop(context, "updated");  /// Updates the job information on the server.
       } else {
         print('Failed to update job. Status code: ${response.statusCode}');
         print('Response: ${response.body}');
@@ -624,6 +638,7 @@ class _JobDetailState extends State<JobDetail> {
     }
   }
 
+  /// Shows a confirmation dialog before deleting the job.
   Future<void> showDeleteConfirmationDialog(
       BuildContext context, int jobId) async {
     return showDialog(
@@ -653,8 +668,7 @@ class _JobDetailState extends State<JobDetail> {
     );
   }
 
-
-
+  /// Deletes the job from the server.
   Future<void> deletePost(int jobId) async {
     String baseUrl = dotenv.env['BASE_URL'] ?? 'default_url';
 
@@ -1031,22 +1045,37 @@ class _JobDetailState extends State<JobDetail> {
   }
 }
 
+/// StatefulWidget for creating a new job post.
 // TODO: add CreatePost of company
 class CreatePost extends StatefulWidget{
+  /// Job data, passed in for potential initial values.
   final Job job;
 
+  /// Constructor for [CreatePost].
   CreatePost({required this.job});
 
   @override
   _CreatePostState createState() => _CreatePostState();
 }
 
+/// State for the [CreatePost] widget.
 class _CreatePostState extends State<CreatePost> {
+  /// Controller for the job title input field.
   final TextEditingController _title = TextEditingController();
+
+  /// Controller for the job location input field.
   final TextEditingController _location = TextEditingController();
+
+  /// Controller for the job salary input field.
   final TextEditingController _salary = TextEditingController();
+
+  /// Controller for the number of people needed input field.
   final TextEditingController _people = TextEditingController();
+
+  /// Controller for the job position input field.
   final TextEditingController _position = TextEditingController();
+
+  /// Controller for the job description input field.
   final TextEditingController _description = TextEditingController();
 
   @override
@@ -1060,6 +1089,7 @@ class _CreatePostState extends State<CreatePost> {
     _description.text = '';
   }
 
+  /// Creates a new job post on the server.
   Future<void> createJob(int jobId, Job updatedJob) async {
     String baseUrl = dotenv.env['BASE_URL'] ?? 'default_url';
 
@@ -1108,7 +1138,7 @@ class _CreatePostState extends State<CreatePost> {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text("Post create successfully!")));
         // _SuccessDialog(context, 'Post create successfully');
-        Navigator.pop(context, "created");
+        Navigator.pop(context, "created"); // Notify the previous screen of creation.
       } else {
         print('Failed to update job. Status code: ${response.statusCode}');
         print('Response: ${response.body}');
