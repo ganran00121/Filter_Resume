@@ -1,3 +1,12 @@
+/// @author Supakom Piw-on
+/// 
+/// @student_id 640510687
+/// 
+/// @feature ระบบ Chat
+/// 
+/// @description ระบบ Chat ระหว่าง User กับ AI
+/// 
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';

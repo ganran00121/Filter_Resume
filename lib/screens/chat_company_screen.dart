@@ -1,3 +1,7 @@
+/// @main feature: Company chat view
+///
+/// @description: หน้าดูแชทสำหรับ Company
+///
 import 'dart:ffi';
 import 'dart:io';
 import 'package:flutter/material.dart';
