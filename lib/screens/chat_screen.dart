@@ -4,23 +4,33 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+/// Secure storage instance for storing sensitive data.
 final FlutterSecureStorage _storage = FlutterSecureStorage();
 
+/// Represents a chat entity with a receiver ID, name, and image.
 class Chat {
+  /// The ID of the chat receiver.
   final int receiverId;
+  /// The name of the chat receiver.
   final String name;
+  /// The image URL of the chat receiver.
   final String image;
 
+  /// Creates a [Chat] instance.
   Chat({required this.receiverId, required this.name, required this.image});
 }
 
+/// A screen displaying a list of chats.
 class ChatScreen extends StatefulWidget {
   @override
-  _ChatScreenState createState() => _ChatScreenState();
+  ChatScreenState createState() => ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+/// State for the [ChatScreen] widget.
+class ChatScreenState extends State<ChatScreen> {
+  /// List of chats to display.
   List<Chat> chats = [];
+  /// Flag to indicate if the chat list is loading.
   bool isLoading = true;
 
   @override
@@ -29,6 +39,7 @@ class _ChatScreenState extends State<ChatScreen> {
     fetchChatList();
   }
 
+  /// Fetches the chat list from the server.
   Future<void> fetchChatList() async {
     print('Fetching Chat List...');
     String baseUrl = dotenv.env['BASE_URL'] ?? 'https://default_url.com';
@@ -82,6 +93,7 @@ class _ChatScreenState extends State<ChatScreen> {
           }
         }
 
+        // Convert the grouped chat data into `Chat` objects.
         List<Chat> chatList = groupedChats.values.map((chat) {
           return Chat(
             receiverId: chat["id"],
@@ -165,7 +177,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 }
 
-// Chat Room
+/// A screen displaying the details of a chat with a specific receiver.
 class ChatDetailScreen extends StatefulWidget {
   final int receiverId;
   final String receiverName;
@@ -177,10 +189,15 @@ class ChatDetailScreen extends StatefulWidget {
 }
 
 class _ChatDetailScreenState extends State<ChatDetailScreen> {
+  /// List of messages in the chat.
   List<Map<String, dynamic>> messages = [];
+  /// Flag to indicate if the chat history is loading.
   bool isLoading = true;
+  /// The ID of the current user.
   int userId = 0;
+  /// The type of the current user (e.g., "applicant", "company").
   String userType = '';
+  /// Controller for the message input field.
   TextEditingController messageController =
   TextEditingController(); // Input field controller
 
@@ -190,6 +207,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     fetchChatHistory();
   }
 
+  /// Fetches the chat history from the server.
   Future<void> fetchChatHistory() async {
     print('Fetching Chat History...');
     String baseUrl = dotenv.env['BASE_URL'] ?? 'http://192.168.207.73:3000';
@@ -218,8 +236,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         List<dynamic> jsonData = json.decode(response.body);
         print('Received Chat History: $jsonData');
 
-        //
-        Set<int> seenIds = {}; // Track message IDs to prevent duplicates
+        // Use a Set to track message IDs to prevent duplicate messages.
+        Set<int> seenIds = {};
 
         setState(() {
           messages = jsonData
@@ -231,6 +249,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               .map((message) {
             int messageId = message["ID"] ?? 0;
 
+            // Skip the message if its ID has already been seen.
             if (seenIds.contains(messageId)) {
               return null; // Skip this message
             }
@@ -245,9 +264,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               "created_at": message["CreatedAt"] ?? "",
             };
           })
-              .where((message) => message != null) //
+              .where((message) => message != null) // Remove null entries.
               .toList()
-              .cast<Map<String, dynamic>>(); //
+              .cast<Map<String, dynamic>>(); // Cast to the correct type.
 
           isLoading = false;
         });
@@ -261,10 +280,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     }
   }
 
+  /// Sends a message to the receiver.
   Future<void> sendMessage() async {
     String baseUrl = dotenv.env['BASE_URL'] ?? '';
     String? token = await _storage.read(key: 'auth_token');
 
+    // Don't send empty messages.
     if (messageController.text.trim().isEmpty) {
       print("Message is empty. Not sending.");
       return;
@@ -273,6 +294,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     String messageText = messageController.text.trim();
     messageController.clear();
 
+    // Create a temporary message object to display immediately.
     Map<String, dynamic> newMessage = {
       "id": DateTime.now().millisecondsSinceEpoch, // Temporary unique ID
       "sender_id": userId,
@@ -282,6 +304,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       "job_id": null, // Placeholder for job_id
     };
 
+    // Add the new message to the *beginning* of the list for immediate display (reverse order).
     setState(() {
       messages.insert(0, newMessage);
     });
@@ -290,6 +313,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     Uri apiUriJob = Uri.parse('$baseUrl/api/jobs/user/$userId/applications');
 
     try {
+      // Fetch Job ID.  Get the *latest* job ID associated with the user.
       var resJob = await http.get(
         apiUriJob,
         headers: {
@@ -310,6 +334,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       }
       print("Latest Job ID: $latestJobId");
 
+      // Send Message to server.
       var response = await http.post(
         apiUriMessage,
         headers: {
@@ -326,9 +351,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         print("Message sent successfully!");
+        // Update local message with real job ID from the server response.
         setState(() {
           newMessage["job_id"] = latestJobId;
         });
+        // Refresh the chat history after a delay to ensure the server has processed the message.
         Future.delayed(Duration(seconds: 1), () {
           fetchChatHistory();
         });
@@ -348,7 +375,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             child: Row(
               children: [
                 CircleAvatar(
-                  backgroundImage: AssetImage(''),
+                  backgroundImage: AssetImage(''), //  receiver's profile image
                 ),
                 SizedBox(
                   width: 8,
@@ -369,6 +396,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   ? Center(child: Text("No messages yet"))
                   : Container(
                 color: Colors.white,
+                // Display the chat messages in a ListView.
                 child: ListView.builder(
                   reverse: true,
                   itemCount: messages.length,

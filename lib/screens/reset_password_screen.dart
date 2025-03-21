@@ -4,21 +4,20 @@
 ///
 /// @feature Reset Password
 ///
-/// @description This screen allows users to reset their password.
-/// Users need to provide their email, new password, and confirm the new password.
-/// The screen validates the input and communicates with the server to update the password.
+/// @description หน้ารีเซต password กรณีลืม password
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-/// A screen that allows users to reset their password.
+/// Reset password screen
 class ResetPasswordScreen extends StatefulWidget {
   @override
   ResetPasswordScreenState createState() => ResetPasswordScreenState();
 }
 
+/// State for the [ResetPasswordScreen] widget.
 class ResetPasswordScreenState extends State<ResetPasswordScreen> {
   /// Controller for the email input field.
   final TextEditingController _emailController = TextEditingController();

@@ -6,30 +6,43 @@ import 'package:http/http.dart' as http; // Import http package
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:convert';
 
+/// Secure storage instance for storing sensitive data.
 final FlutterSecureStorage _storage = FlutterSecureStorage();
 
+/// Represents a chat entity with a name, score, and image.
 class Chat {
+  /// The name of the chat participant.
   final String name;
+  /// The score associated with the chat participant.
   final double score;
+  /// The image URL of the chat participant.
   final String image;
 
+  /// Creates a [Chat] instance.
   Chat({required this.name, required this.score, required this.image});
 }
 
+/// A screen displaying a list of chat participants for a specific job.
 class ChatScreen extends StatefulWidget {
-  // เปลี่ยน StatelessWidget เป็น StatefulWidget
+  /// The ID of the job.
   final int job_id;
+  /// The name of the job.
   final String job_name;
+
+  /// Creates a [ChatScreen].
   ChatScreen({required this.job_id, required this.job_name});
 
   @override
-  _ChatScreenState createState() => _ChatScreenState();
+  ChatScreenState createState() => ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
-  // สร้าง State class
+/// State for the [ChatScreen] widget.
+class ChatScreenState extends State<ChatScreen> {
+  /// List of chat participants.
   List<Chat> chats = [];
+  /// The API response (for debugging).
   String savedResponse = '';
+  /// Flag to indicate if the chat list is loading.
   bool isLoading = true;
 
   @override
@@ -38,6 +51,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _getChatList();
   }
 
+  /// Fetches the list of chat participants from the server.
   Future<void> _getChatList() async {
     setState(() => isLoading = true);
     String baseUrl = dotenv.env['BASE_URL'] ?? 'default_url';
@@ -168,7 +182,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 }
 
-// Chat Room
+/// Chat Room
 class ChatDetailScreen extends StatefulWidget {
   final int receiverId;
   final String receiverName;
@@ -193,6 +207,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     fetchChatHistory();
   }
 
+  /// Fetches the chat history from the server.
   Future<void> fetchChatHistory() async {
     print('Fetching Chat History...');
     String baseUrl = dotenv.env['BASE_URL'] ?? 'http://192.168.207.73:3000';
@@ -264,6 +279,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     }
   }
 
+  /// Sends a message to the receiver.
   Future<void> sendMessage() async {
     String baseUrl = dotenv.env['BASE_URL'] ?? '';
     String? token = await _storage.read(key: 'auth_token');
@@ -276,6 +292,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     String messageText = messageController.text.trim();
     messageController.clear();
 
+    // Create a temporary message object to display immediately.
     Map<String, dynamic> newMessage = {
       "id": DateTime.now().millisecondsSinceEpoch, // Temporary unique ID
       "sender_id": userId,
@@ -285,6 +302,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       "job_id": null, // Placeholder for job_id
     };
 
+    // Add the new message to the *beginning* of the list for immediate display (reverse order).
     setState(() {
       messages.insert(0, newMessage);
     });
